@@ -15,8 +15,9 @@ export interface OnboardingSubmission {
 }
 
 function endpoint(path: string) {
-  if (!WORKER_URL) return null;
-  return `${WORKER_URL.replace(/\/$/, "")}${path}`;
+  const baseUrl = WORKER_URL?.trim().replace(/^["']|["']$/g, "");
+  if (!baseUrl) return null;
+  return `${baseUrl.replace(/\/$/, "")}${path}`;
 }
 
 async function postJson(path: string, body: unknown) {

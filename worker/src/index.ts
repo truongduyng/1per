@@ -126,7 +126,7 @@ async function handleOnboarding(request: Request, env: Env) {
 }
 
 async function generateAffirmation(env: Env, date: string) {
-  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
     messages: [
       {
         role: "system",
@@ -189,24 +189,29 @@ async function handleAffirmation(request: Request, env: Env) {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
+    try {
+      const url = new URL(request.url);
 
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+      if (request.method === "OPTIONS") {
+        return new Response(null, { status: 204, headers: CORS_HEADERS });
+      }
+
+      if (request.method === "GET" && url.pathname === "/health") {
+        return json({ ok: true });
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/affirmation") {
+        return handleAffirmation(request, env);
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/onboarding") {
+        return handleOnboarding(request, env);
+      }
+
+      return json({ ok: false, error: "Not found." }, { status: 404 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Worker request failed.";
+      return json({ ok: false, error: message }, { status: 500 });
     }
-
-    if (request.method === "GET" && url.pathname === "/health") {
-      return json({ ok: true });
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/affirmation") {
-      return handleAffirmation(request, env);
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/onboarding") {
-      return handleOnboarding(request, env);
-    }
-
-    return json({ ok: false, error: "Not found." }, { status: 404 });
   },
 };
