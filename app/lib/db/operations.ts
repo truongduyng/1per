@@ -1,8 +1,9 @@
 import { eq, desc, asc, count, and } from 'drizzle-orm';
 import {
   db,
-  profiles, habits, habitCompletions, dailyFocus, todos,
+  profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, todos,
   type NewProfile, type NewHabit, type NewHabitCompletion, type NewDailyFocus,
+  type NewDailyAffirmation,
 } from './database';
 import { ensureDatabaseInitialized } from './init';
 import { getLocalDateString } from '../timezone';
@@ -223,6 +224,32 @@ export const dailyFocusOps = {
       db.update(dailyFocus)
         .set({ eveningResetCompletedAt: null, updatedAt: new Date() })
         .where(eq(dailyFocus.date, key))
+        .returning()
+    );
+  },
+};
+
+// ── dailyAffirmationOps ──────────────────────────────────────────────────────
+export const dailyAffirmationOps = {
+  async getByDate(date: string) {
+    const result = await withInitializedDb(() =>
+      db.select().from(dailyAffirmations).where(eq(dailyAffirmations.date, date)).limit(1)
+    );
+    return result[0] ?? null;
+  },
+
+  async upsert(data: NewDailyAffirmation) {
+    return await withInitializedDb(() =>
+      db.insert(dailyAffirmations)
+        .values({ ...data, updatedAt: new Date() })
+        .onConflictDoUpdate({
+          target: [dailyAffirmations.date],
+          set: {
+            text: data.text,
+            source: data.source ?? 'ai',
+            updatedAt: new Date(),
+          },
+        })
         .returning()
     );
   },

@@ -48,6 +48,17 @@ export const dailyFocus = sqliteTable('daily_focus', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// ── daily_affirmations ───────────────────────────────────────────────────────
+// AI-generated daily affirmation, cached locally by date.
+export const dailyAffirmations = sqliteTable('daily_affirmations', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull().unique(),         // 'YYYY-MM-DD'
+  text: text('text').notNull(),
+  source: text('source').notNull().default('ai'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
 // ── todos ─────────────────────────────────────────────────────────────────────
 // Simple per-day task list
 export const todos = sqliteTable('todos', {
@@ -71,6 +82,9 @@ export type NewHabitCompletion = typeof habitCompletions.$inferInsert;
 
 export type DailyFocus = typeof dailyFocus.$inferSelect;
 export type NewDailyFocus = typeof dailyFocus.$inferInsert;
+
+export type DailyAffirmationRow = typeof dailyAffirmations.$inferSelect;
+export type NewDailyAffirmation = typeof dailyAffirmations.$inferInsert;
 
 export type Todo = typeof todos.$inferSelect;
 export type NewTodo = typeof todos.$inferInsert;

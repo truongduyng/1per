@@ -1,5 +1,6 @@
 interface Env {
   DB: D1Database;
+  AI: Ai;
 }
 
 interface OnboardingSubmission {
@@ -15,7 +16,7 @@ interface OnboardingSubmission {
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
@@ -35,6 +36,18 @@ function badRequest(message: string) {
 
 function isString(value: unknown): value is string {
   return typeof value === "string";
+}
+
+function isDateKey(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function cleanAffirmation(value: string) {
+  return value
+    .replace(/^["“”'`]+|["“”'`]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
 }
 
 function parseSubmission(value: unknown): OnboardingSubmission | null {
@@ -112,6 +125,68 @@ async function handleOnboarding(request: Request, env: Env) {
   return json({ ok: true }, { status: 201 });
 }
 
+async function generateAffirmation(env: Env, date: string) {
+  const result = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+    messages: [
+      {
+        role: "system",
+        content:
+          "You write concise daily affirmations for a focus and habit-building app. Return exactly one sentence, no quotes, no emoji, no markdown.",
+      },
+      {
+        role: "user",
+        content:
+          `Generate a warm, grounded affirmation for ${date}. It should be original, 8 to 18 words, first person, practical, and not cheesy.`,
+      },
+    ],
+    max_tokens: 48,
+    temperature: 0.8,
+  });
+
+  const response = typeof result.response === "string" ? result.response : "";
+  const affirmation = cleanAffirmation(response);
+
+  if (!affirmation) {
+    throw new Error("Workers AI returned an empty affirmation.");
+  }
+
+  return affirmation;
+}
+
+async function handleAffirmation(request: Request, env: Env) {
+  const url = new URL(request.url);
+  const date = url.searchParams.get("date") ?? "";
+
+  if (!isDateKey(date)) {
+    return badRequest("Invalid date. Expected YYYY-MM-DD.");
+  }
+
+  const existing = await env.DB.prepare(
+    "SELECT text FROM daily_affirmations WHERE date = ? LIMIT 1",
+  )
+    .bind(date)
+    .first<{ text: string }>();
+
+  if (existing?.text) {
+    return json({ ok: true, affirmation: existing.text, source: "db" });
+  }
+
+  const affirmation = await generateAffirmation(env, date);
+
+  await env.DB.prepare(
+    `INSERT INTO daily_affirmations (date, text, source, updated_at)
+      VALUES (?, ?, 'workers-ai', CURRENT_TIMESTAMP)
+      ON CONFLICT(date) DO UPDATE SET
+        text = excluded.text,
+        source = excluded.source,
+        updated_at = CURRENT_TIMESTAMP`,
+  )
+    .bind(date, affirmation)
+    .run();
+
+  return json({ ok: true, affirmation, source: "workers-ai" }, { status: 201 });
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -122,6 +197,10 @@ export default {
 
     if (request.method === "GET" && url.pathname === "/health") {
       return json({ ok: true });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/affirmation") {
+      return handleAffirmation(request, env);
     }
 
     if (request.method === "POST" && url.pathname === "/api/onboarding") {

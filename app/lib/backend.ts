@@ -47,3 +47,35 @@ async function postJson(path: string, body: unknown) {
 export async function submitOnboarding(data: OnboardingSubmission) {
   await postJson("/api/onboarding", data);
 }
+
+export interface GeneratedAffirmationResponse {
+  affirmation: string;
+}
+
+export async function fetchGeneratedAffirmation(date: string): Promise<string> {
+  const url = endpoint(`/api/affirmation?date=${encodeURIComponent(date)}`);
+  if (!url) {
+    throw new Error("Backend URL is not configured.");
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+
+    if (!response.ok) {
+      throw new Error(`Affirmation request failed with status ${response.status}`);
+    }
+
+    const data = (await response.json()) as Partial<GeneratedAffirmationResponse>;
+    const affirmation = data.affirmation?.trim();
+    if (!affirmation) {
+      throw new Error("Affirmation response was empty.");
+    }
+
+    return affirmation;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

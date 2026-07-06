@@ -1,6 +1,7 @@
 import GradientBackground from "@/components/GradientBackground";
 import { db, habits, habitCompletions, dailyFocus, completionOps, dailyFocusOps } from "@/lib/db";
 import {
+  type DailyAffirmation,
   getDailyAffirmation,
   syncDailyAffirmationWidget,
 } from "@/lib/dailyAffirmation";
@@ -60,10 +61,7 @@ export default function HomeScreen() {
   const today = useMemo(() => getTodayInLocalTimezone(), []);
   const todayKey = getLocalDateString(today);
   const todayName = DAY_NAMES[today.getDay()];
-  const dailyAffirmation = useMemo(
-    () => getDailyAffirmation(todayKey, todayName),
-    [todayKey, todayName]
-  );
+  const [dailyAffirmation, setDailyAffirmation] = useState<DailyAffirmation | null>(null);
 
   const { data: allHabits } = useLiveQuery(db.select().from(habits));
   const { data: allCompletions } = useLiveQuery(db.select().from(habitCompletions));
@@ -123,8 +121,26 @@ export default function HomeScreen() {
   const [showBlockerPicker, setShowBlockerPicker] = useState(false);
 
   useEffect(() => {
-    syncDailyAffirmationWidget(dailyAffirmation);
-  }, [dailyAffirmation]);
+    let cancelled = false;
+
+    const loadAffirmation = async () => {
+      try {
+        const affirmation = await getDailyAffirmation(todayKey, todayName);
+        if (cancelled) return;
+
+        setDailyAffirmation(affirmation);
+        syncDailyAffirmationWidget(affirmation);
+      } catch (error) {
+        console.warn("Failed to load daily affirmation:", error);
+      }
+    };
+
+    loadAffirmation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [todayKey, todayName]);
 
   const firstName = userProfile?.name?.split(" ")[0] ?? "there";
   const goalText = (todayFocus?.goal ?? "").trim();
@@ -312,7 +328,7 @@ export default function HomeScreen() {
             </View>
             <View style={s.affirmationLine}>
               <Text style={s.headerAffirmation} selectable>
-                {dailyAffirmation.text}
+                {dailyAffirmation?.text ?? "Preparing today's affirmation..."}
               </Text>
             </View>
           </View>
