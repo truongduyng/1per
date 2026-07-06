@@ -1,10 +1,14 @@
 import GradientBackground from "@/components/GradientBackground";
-import { db, habits, habitCompletions, dailyFocus, todos, completionOps, todoOps, dailyFocusOps } from "@/lib/db";
+import { db, habits, habitCompletions, dailyFocus, completionOps, dailyFocusOps } from "@/lib/db";
+import {
+  getDailyAffirmation,
+  syncDailyAffirmationWidget,
+} from "@/lib/dailyAffirmation";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { eq, desc } from "drizzle-orm";
+import { desc } from "drizzle-orm";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -22,9 +26,8 @@ import {
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DAY_NAMES } from "@/lib/performance";
-import { palette } from "@/constants/theme";
+import { Fonts, palette } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { SwipeableRow } from "@/components/todo/SwipeableRow";
 import { resolveIoniconName } from "@/lib/iconNames";
 import {
   APP_BLOCKER_SELECTION_ID,
@@ -57,16 +60,16 @@ export default function HomeScreen() {
   const today = useMemo(() => getTodayInLocalTimezone(), []);
   const todayKey = getLocalDateString(today);
   const todayName = DAY_NAMES[today.getDay()];
+  const dailyAffirmation = useMemo(
+    () => getDailyAffirmation(todayKey, todayName),
+    [todayKey, todayName]
+  );
 
   const { data: allHabits } = useLiveQuery(db.select().from(habits));
   const { data: allCompletions } = useLiveQuery(db.select().from(habitCompletions));
   const { data: focusRows } = useLiveQuery(
     db.select().from(dailyFocus).orderBy(desc(dailyFocus.date)).limit(5)
   );
-  const { data: todayTodos } = useLiveQuery(
-    db.select().from(todos).where(eq(todos.date, todayKey))
-  );
-
   const todayFocus = useMemo(
     () => focusRows?.find((f) => f.date === todayKey) ?? null,
     [focusRows, todayKey]
@@ -111,8 +114,6 @@ export default function HomeScreen() {
     }
   };
 
-  const [inputText, setInputText] = useState("");
-  const inputRef = useRef<TextInput>(null);
   const isEveningResetUnlocked = useMemo(() => __DEV__ || new Date().getHours() >= 21, []);
   const [showResetLockMessage, setShowResetLockMessage] = useState(false);
   const [blockerStatus, setBlockerStatus] = useState("Not configured");
@@ -121,27 +122,10 @@ export default function HomeScreen() {
   });
   const [showBlockerPicker, setShowBlockerPicker] = useState(false);
 
-  const addTodo = async () => {
-    const title = inputText.trim();
-    if (!title) return;
-    setInputText("");
-    Keyboard.dismiss();
-    await todoOps.add(todayKey, title);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
+  useEffect(() => {
+    syncDailyAffirmationWidget(dailyAffirmation);
+  }, [dailyAffirmation]);
 
-  const toggleTodo = async (id: number, done: boolean) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    await todoOps.toggle(id, !done);
-    if (!done) Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  const deleteTodo = async (id: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await todoOps.delete(id);
-  };
-
-  const sortedTodos = todayTodos ?? [];
   const firstName = userProfile?.name?.split(" ")[0] ?? "there";
   const goalText = (todayFocus?.goal ?? "").trim();
   const isGoalComplete = Boolean(todayFocus?.completedAt);
@@ -326,9 +310,14 @@ export default function HomeScreen() {
                 {getGreeting()}, {firstName}
               </Text>
             </View>
+            <View style={s.affirmationLine}>
+              <Text style={s.headerAffirmation} selectable>
+                {dailyAffirmation.text}
+              </Text>
+            </View>
           </View>
 
-          <Text style={s.heroSectionLabel}>{"TODAY'S MAIN GOAL"}</Text>
+          <Text style={s.sectionLabel}>{"TODAY'S MAIN GOAL"}</Text>
           <View style={s.goalCard}>
             <View style={s.goalTopRow}>
               <View style={s.goalContent}>
@@ -494,54 +483,6 @@ export default function HomeScreen() {
         </View>
 
         <View style={s.section}>
-          <Text style={s.sectionLabel}>{"TO-DO"}</Text>
-          <View style={s.card}>
-            {sortedTodos.map((todo, i) => (
-              <View key={todo.id}>
-                {i > 0 && <View style={s.divider} />}
-                <SwipeableRow onDelete={() => deleteTodo(todo.id)}>
-                  <View style={s.row}>
-                    <Pressable
-                      style={[s.checkbox, s.todoCheckbox, todo.done && s.checkboxDone]}
-                      onPress={() => toggleTodo(todo.id, todo.done)}
-                    >
-                      {todo.done && <Ionicons name="checkmark" size={13} color={palette.white} />}
-                    </Pressable>
-                    <Text
-                      style={[s.rowTitle, s.todoTitle, todo.done && s.rowTitleDone]}
-                      onPress={() => toggleTodo(todo.id, todo.done)}
-                      numberOfLines={3}
-                    >
-                      {todo.title}
-                    </Text>
-                  </View>
-                </SwipeableRow>
-              </View>
-            ))}
-            {sortedTodos.length > 0 && <View style={s.divider} />}
-            <View style={s.inputRow}>
-              <TextInput
-                ref={inputRef}
-                style={s.input}
-                placeholder="Add a task..."
-                placeholderTextColor={C.textPlaceholder}
-                value={inputText}
-                onChangeText={setInputText}
-                multiline
-                numberOfLines={3}
-                maxLength={240}
-                textAlignVertical="top"
-              />
-              {inputText.trim().length > 0 && (
-                <Pressable style={s.addBtn} onPress={addTodo}>
-                  <Text style={s.addBtnText}>+</Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-        </View>
-
-        <View style={s.section}>
           <Text style={s.sectionLabel}>EVENING RESET</Text>
           <Pressable
             style={s.resetCard}
@@ -695,7 +636,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     birdTwo: { right: 74, top: 48 },
     birdThree: { right: 42, top: 82 },
     header: {
-      marginBottom: 48,
+      marginBottom: 34,
     },
     greetingRow: {
       flexDirection: "row",
@@ -707,6 +648,19 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       fontSize: 24,
       fontWeight: "700",
       color: C.textPrimary,
+    },
+    affirmationLine: {
+      maxWidth: 344,
+      borderLeftWidth: 3,
+      borderLeftColor: C.accentBorder,
+      paddingLeft: 12,
+    },
+    headerAffirmation: {
+      color: C.textSecondary,
+      fontFamily: Fonts.rounded,
+      fontSize: 16,
+      fontWeight: "600",
+      lineHeight: 23,
     },
     date: {
       fontSize: 16,
@@ -722,14 +676,6 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       color: C.textTertiary,
       marginBottom: 10,
     },
-    heroSectionLabel: {
-      fontSize: 12,
-      fontWeight: "800",
-      letterSpacing: 0.4,
-      color: C.textSecondary,
-      marginBottom: 12,
-    },
-
     goalCard: {
       backgroundColor: "rgba(255,255,255,0.2)",
       borderRadius: 16,
@@ -1011,31 +957,6 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     emptyRow: { paddingVertical: 20, paddingHorizontal: 16 },
     emptyText: { fontSize: 14, color: C.textQuaternary, textAlign: "center" },
 
-    todoCheckbox: { alignSelf: "flex-start", marginTop: 2 },
-    todoTitle: { flex: 1, lineHeight: 21 },
-
-    inputRow: {
-      flexDirection: "row",
-      alignItems: "flex-end",
-      paddingHorizontal: 16,
-      paddingVertical: 10,
-      gap: 10,
-    },
-    input: {
-      flex: 1,
-      fontSize: 15,
-      color: C.textPrimary,
-      paddingVertical: 6,
-      minHeight: 34,
-      maxHeight: 78,
-    },
-    addBtn: {
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-      backgroundColor: palette.orange,
-      borderRadius: 8,
-    },
-    addBtnText: { fontSize: 18, fontWeight: "800", color: palette.white },
     resetCard: {
       backgroundColor: "#05070A",
       borderRadius: 22,
