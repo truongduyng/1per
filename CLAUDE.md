@@ -2,38 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Repository layout
+
+Two independent projects:
+
+- `app/` — the Expo mobile app (bun)
+- `worker/` — Cloudflare Worker backend (D1 + Workers AI) for onboarding analytics and AI-generated affirmations
+
+Naming: the product is **1Per**, but the internal slug/bundle is `kadoze` (`app.kadoze.yikudo`). `README.md` is the PRD describing the current product.
+
 ## Commands
 
-All commands run from the `app/` directory using `bun`:
+App (run from `app/`, uses `bun`):
 
 ```bash
-# Start dev server
-bun run start
-
-# Run on iOS simulator (targets iPhone 17)
-bun run ios
-# or from root:
-make dev
-
-# Lint
+bun run start        # Expo dev server
+bun run ios          # iOS simulator (targets 'iPhone 17')  |  make dev (from root)
 bun run lint
-
-# Production build (EAS, iOS only)
-bun run build
-# or from root:
-make build
-
-# Submit to App Store
-bun run submit
-# or from root:
-make submit
+bun run build        # EAS production build, iOS, --local   |  make build
+bun run submit       # Submit to App Store                  |  make submit
 ```
+
+Worker (run from `worker/`, or via root Makefile):
+
+```bash
+bun run dev                # wrangler dev            |  make worker-dev
+bun run deploy             # wrangler deploy         |  make worker-deploy
+bun run db:migrate         # apply D1 migrations remote  |  make worker-migrate
+bun run db:migrate:local   # apply D1 migrations local   |  make worker-migrate-local
+```
+
+Release: `make bump` (optionally `BUMP=minor|major`) bumps the version, builds, and submits.
 
 There is no test suite configured.
 
 ## Architecture Overview
 
-**1Per** is an offline-first iOS/Android app (React Native + Expo SDK 55, React 19) built around the "10k Iteration Protocol" - habit tracking, daily focus, and routines in one unified workspace.
+**1Per** is an offline-first iOS/Android app (React Native + Expo SDK 55, React 19) for getting 1% better every day - one main daily goal, habit tracking, focus sessions, and an evening reset in one unified workspace. All user data lives on-device; the worker is a fire-and-forget sidecar, never required for the app to function.
 
 ### Directory layout (inside `app/`)
 
@@ -45,6 +50,8 @@ app/           Expo Router file-based routes
     routines.tsx  Habit tracker
     profile.tsx   Account & settings
   onboarding.tsx  First-run flow (gates app until complete)
+  focus.tsx       Focus session screen
+  evening-reset.tsx  Evening reflection flow
   settings.tsx
 
 components/    Presentational components, grouped by feature
@@ -54,10 +61,15 @@ lib/
   db/
     schema.ts      Drizzle-ORM table definitions (single source of truth for types)
     database.ts    expo-sqlite connection + drizzle instance
-    operations.ts  Typed CRUD helpers: profileOps, habitOps, completionOps, dailyFocusOps, todoOps
+    operations.ts  Typed CRUD helpers: profileOps, habitOps, completionOps,
+                   dailyFocusOps, dailyAffirmationOps, todoOps
     index.ts       Re-exports + initializeDatabase() + resetDatabase()
-  storage.ts     MMKV instance (used for theme prefs and lightweight key-value state)
-  notifications.ts, timezone.ts, timeCapsule.ts, performance.ts
+  storage.ts     MMKV instance (theme prefs and lightweight key-value state)
+  backend.ts     HTTP client for the worker (see "Backend worker" below)
+  dailyAffirmation.ts  Fetch/cache affirmation + push to widget via ExtensionStorage
+  appBlocker.ts  Screen Time app blocking via react-native-device-activity
+  eveningReflection.ts, timeCapsule.ts, notifications.ts, timezone.ts, performance.ts
+targets/       Native Apple extensions (see "Apple targets" below)
 constants/
   theme.ts     palette (charcoal + burnt orange), Colors, Fonts
 ```
@@ -65,11 +77,24 @@ constants/
 ### Data layer
 
 - **SQLite via expo-sqlite + Drizzle ORM** - no remote sync; purely local.
-- Schema tables: `profiles`, `habits`, `habit_completions`, `daily_focus`, `todos`.
+- Schema tables: `profiles`, `habits`, `habit_completions`, `daily_focus`, `daily_affirmations`, `todos`.
 - `initializeDatabase()` runs `CREATE TABLE IF NOT EXISTS` on cold start via `ProfileInitializer`.
 - `resetDatabase()` drops all tables and clears MMKV - used in dev/reset flows.
 - Dates stored as `TEXT` (`'YYYY-MM-DD'`) for daily keys; timestamps stored as `INTEGER` (unix epoch).
 - All DB operations go through the typed helpers in `lib/db/operations.ts`, never raw SQL in components.
+
+### Backend worker
+
+- `lib/backend.ts` reads `EXPO_PUBLIC_CLOUDFLARE_WORKER_URL` (fallback `EXPO_PUBLIC_BACKEND_URL`); if unset, every call silently no-ops - keep it that way so the app stays fully offline-capable. Requests have an 8s abort timeout.
+- Worker endpoints (`worker/src/index.ts`): `GET /health`, `GET /api/affirmation?date=YYYY-MM-DD` (generates via Workers AI `@cf/meta/llama-3.1-8b-instruct-fp8`, cached per-date in D1), `POST /api/onboarding` (stores onboarding submissions).
+- D1 schema changes go in `worker/migrations/` as numbered SQL files, applied with wrangler migrations commands.
+
+### Apple targets (`app/targets/`)
+
+Built with `@kingstinct/expo-apple-targets` (config in each target's `expo-target.config.js`; regenerated into `ios/` by prebuild — don't hand-edit the generated Xcode project):
+
+- `DailyAffirmationWidget` - WidgetKit home-screen widget. The app writes the day's affirmation into the App Group (`group.app.kadoze.yikudo`) via `ExtensionStorage` in `lib/dailyAffirmation.ts`; the Swift widget reads it.
+- `ActivityMonitorExtension`, `ShieldAction`, `ShieldConfiguration` - Screen Time / FamilyControls extensions backing the doomscroll app blocker (`lib/appBlocker.ts`, selection id `kadoze-doomscroll-apps`).
 
 ### Startup / navigation flow
 
@@ -78,7 +103,7 @@ constants/
    - No profile → create one → redirect to `/onboarding`.
    - Profile exists but `onboarding_completed = false` → redirect to `/onboarding`.
    - Otherwise → land on `(tabs)`.
-3. Onboarding sets `onboarding_completed = true` on the profile row when finished.
+3. Onboarding sets `onboarding_completed = true` on the profile row when finished, and posts the submission to the worker (best-effort).
 
 ### Theming
 
@@ -98,4 +123,6 @@ constants/
 | `@shopify/react-native-skia` | Canvas/graphics |
 | `react-native-purchases` | RevenueCat in-app purchases |
 | `expo-notifications` | Push & local notifications |
+| `react-native-device-activity` | Screen Time / app blocking (iOS) |
+| `@kingstinct/expo-apple-targets` | Widget & extension targets + App Group storage |
 | `react-native-keyboard-controller` | Keyboard-aware layouts |
