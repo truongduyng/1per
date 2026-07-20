@@ -15,6 +15,7 @@ import { router } from "expo-router";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Animated,
+  AppState,
   Easing,
   Image,
   Pressable,
@@ -125,7 +126,10 @@ export default function HomeScreen() {
 
     const loadAffirmation = async () => {
       try {
-        const affirmation = await getDailyAffirmation(todayKey, todayName);
+        const now = getTodayInLocalTimezone();
+        const dateKey = getLocalDateString(now);
+        const dayName = DAY_NAMES[now.getDay()];
+        const affirmation = await getDailyAffirmation(dateKey, dayName);
         if (cancelled) return;
 
         setDailyAffirmation(affirmation);
@@ -137,10 +141,19 @@ export default function HomeScreen() {
 
     loadAffirmation();
 
+    // Re-sync on foreground so the widget picks up a new day's affirmation
+    // even if the app was left running/backgrounded across midnight.
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        loadAffirmation();
+      }
+    });
+
     return () => {
       cancelled = true;
+      subscription.remove();
     };
-  }, [todayKey, todayName]);
+  }, []);
 
   const firstName = userProfile?.name?.split(" ")[0] ?? "there";
   const goalText = (todayFocus?.goal ?? "").trim();

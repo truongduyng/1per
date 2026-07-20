@@ -6,7 +6,14 @@ module.exports = {
   deploymentTarget: "17.0",
   colors: {
     $accent: "#FF6B22",
-    $widgetBackground: "#FFF7EE",
+    $widgetBackground: {
+      light: "#FFF7EE",
+      dark: "#1B140D",
+    },
+    affirmationSurface: {
+      light: "#FFF7EE",
+      dark: "#1B140D",
+    },
     affirmationInk: {
       light: "#20150D",
       dark: "#FFF7EE",
