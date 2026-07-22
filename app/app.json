@@ -77,7 +77,8 @@
           "appleTeamId": "MVAX6C967A",
           "appGroup": "group.app.kadoze.yikudo"
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "router": {},
@@ -85,6 +86,9 @@
         "projectId": "eed593e4-1bae-4665-8800-c856579b4bdd"
       }
     },
-    "owner": "truongduyng"
+    "owner": "truongduyng",
+    "experiments": {
+      "reactCompiler": true
+    }
   }
 }

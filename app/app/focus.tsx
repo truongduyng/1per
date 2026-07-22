@@ -1,4 +1,5 @@
 import GradientBackground from "@/components/GradientBackground";
+import Aurora from "@/components/Aurora";
 import { palette } from "@/constants/theme";
 import { usePreventScreenSleep } from "@/hooks/usePreventScreenSleep";
 import { useTheme } from "@/hooks/useTheme";
@@ -131,6 +132,9 @@ export default function FocusScreen() {
   return (
     <View style={s.container}>
       <GradientBackground />
+      <View style={s.aurora} pointerEvents="none">
+        <Aurora height={300} intensity={0.8} />
+      </View>
       <SafeAreaView style={s.safeArea}>
         <View style={s.header}>
           <Pressable
@@ -207,6 +211,7 @@ export default function FocusScreen() {
 function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
   return StyleSheet.create({
     container: { flex: 1 },
+    aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.72 },
     safeArea: {
       flex: 1,
       paddingHorizontal: 24,

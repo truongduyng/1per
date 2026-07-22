@@ -13,7 +13,7 @@ import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
 import { Ionicons } from "@expo/vector-icons";
-import ViewShot, { captureRef } from "react-native-view-shot";
+import ViewShot, { captureRef, type ViewShotRef } from "react-native-view-shot";
 import Svg, {
   Circle,
   Defs,
@@ -96,7 +96,7 @@ function buildLinePath(
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const C = useTheme();
-  const shareCardRef = useRef<ViewShot>(null);
+  const shareCardRef = useRef<ViewShotRef>(null);
   const today = useMemo(() => getTodayInLocalTimezone(), []);
 
   const { data: profileData } = useLiveQuery(

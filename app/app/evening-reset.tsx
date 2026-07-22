@@ -1,4 +1,5 @@
 import GradientBackground from "@/components/GradientBackground";
+import Aurora from "@/components/Aurora";
 import { palette } from "@/constants/theme";
 import { usePreventScreenSleep } from "@/hooks/usePreventScreenSleep";
 import { useTheme } from "@/hooks/useTheme";
@@ -220,6 +221,9 @@ export default function EveningResetScreen() {
   return (
     <View style={s.container}>
       <GradientBackground />
+      <View style={s.aurora} pointerEvents="none">
+        <Aurora height={270} intensity={0.7} />
+      </View>
       <SafeAreaView style={s.safeArea}>
         <KeyboardAwareScrollView
           bottomOffset={32}
@@ -416,6 +420,7 @@ export default function EveningResetScreen() {
 function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
   return StyleSheet.create({
     container: { flex: 1 },
+    aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.68 },
     safeArea: { flex: 1, paddingHorizontal: 24 },
     scrollContent: { paddingBottom: 28 },
     header: {
