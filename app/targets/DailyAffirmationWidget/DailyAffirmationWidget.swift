@@ -24,8 +24,13 @@ struct DailyAffirmationProvider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<DailyAffirmationEntry>) -> Void) {
-    let nextRefresh = Calendar.current.date(byAdding: .hour, value: 3, to: Date()) ?? Date()
-    completion(Timeline(entries: [readEntry()], policy: .after(nextRefresh)))
+    completion(Timeline(entries: [readEntry()], policy: .after(startOfNextDay())))
+  }
+
+  private func startOfNextDay() -> Date {
+    let calendar = Calendar.current
+    let startOfToday = calendar.startOfDay(for: Date())
+    return calendar.date(byAdding: .day, value: 1, to: startOfToday) ?? Date().addingTimeInterval(86400)
   }
 
   private func readEntry() -> DailyAffirmationEntry {
@@ -85,7 +90,7 @@ struct DailyAffirmationWidgetView: View {
     .containerBackground(for: .widget) {
       LinearGradient(
         colors: [
-          Color(red: 1.0, green: 0.969, blue: 0.933),
+          Color("affirmationSurface"),
           Color("affirmationMuted").opacity(0.18),
         ],
         startPoint: .topLeading,
