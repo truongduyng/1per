@@ -1,9 +1,12 @@
 BUMP ?= patch
 
-.PHONY: dev build submit bump worker-dev worker-deploy worker-migrate worker-migrate-local
+.PHONY: dev prebuild build submit bump worker-dev worker-deploy worker-migrate worker-migrate-local
 
 dev:
 	cd app && bun run ios
+
+prebuild:
+	cd app && npx expo prebuild -p ios
 
 build:
 	cd app && bun run build
