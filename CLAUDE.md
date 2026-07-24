@@ -91,7 +91,7 @@ constants/
 
 ### Apple targets (`app/targets/`)
 
-Built with `@kingstinct/expo-apple-targets` (config in each target's `expo-target.config.js`; regenerated into `ios/` by prebuild — don't hand-edit the generated Xcode project):
+Built with `@kingstinct/expo-apple-targets` (config in each target's `expo-target.config.js`; regenerated into `ios/` by prebuild — don't hand-edit the generated Xcode project). Note: `@bacons/apple-targets` (the actively maintained successor at [evanbacon/expo-apple-targets](https://github.com/evanbacon/expo-apple-targets)) cannot be adopted here without dropping `react-native-device-activity`'s Screen Time targets — both packages register an identically-named internal Xcode-project config-plugin mod (`xcodeProjectBeta2`), so having both active as plugins always collides during prebuild, regardless of directory scoping. `react-native-device-activity` still depends on `@kingstinct/expo-apple-targets` internally, so this app stays on it for all targets.
 
 - `DailyAffirmationWidget` - WidgetKit home-screen widget. The app writes the day's affirmation into the App Group (`group.app.kadoze.yikudo`) via `ExtensionStorage` in `lib/dailyAffirmation.ts`; the Swift widget reads it.
 - `ActivityMonitorExtension`, `ShieldAction`, `ShieldConfiguration` - Screen Time / FamilyControls extensions backing the doomscroll app blocker (`lib/appBlocker.ts`, selection id `kadoze-doomscroll-apps`).

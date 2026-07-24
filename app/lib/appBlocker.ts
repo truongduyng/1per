@@ -32,13 +32,25 @@ function getSelectionInput(): DeviceActivity.ActivitySelectionInput {
   return { activitySelectionId: APP_BLOCKER_SELECTION_ID };
 }
 
+const SHIELD_BACKGROUND = { red: 28, green: 30, blue: 31 };
+const SHIELD_ORANGE = { red: 251, green: 146, blue: 60 };
+const SHIELD_WHITE = { red: 255, green: 255, blue: 255 };
+const SHIELD_WHITE_MUTED = { red: 255, green: 255, blue: 255, alpha: 0.55 };
+const SHIELD_TEXT_INVERSE = { red: 10, green: 10, blue: 10 };
+
 function updateDefaultShield() {
   DeviceActivity.updateShield(
     {
-      title: "1Per locked",
-      subtitle: "Finish your main task and daily habits before opening this.",
-      primaryButtonLabel: "OK",
-      iconSystemName: "lock.fill",
+      backgroundColor: SHIELD_BACKGROUND,
+      title: "Not right now",
+      titleColor: SHIELD_WHITE,
+      subtitle: "Finish your main task and daily habits first — then this can wait a little longer.",
+      subtitleColor: SHIELD_WHITE_MUTED,
+      iconSystemName: "target",
+      iconTint: SHIELD_ORANGE,
+      primaryButtonLabel: "Back to 1Per",
+      primaryButtonLabelColor: SHIELD_TEXT_INVERSE,
+      primaryButtonBackgroundColor: SHIELD_ORANGE,
     },
     {
       primary: {
