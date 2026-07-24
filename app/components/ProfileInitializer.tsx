@@ -4,11 +4,13 @@ import { profileOps, ensureDatabaseInitialized } from "@/lib/db";
 interface ProfileInitializerProps {
   children: React.ReactNode;
   onInitialized?: (needsOnboarding: boolean) => void;
+  onReady?: () => void;
 }
 
 export default function ProfileInitializer({
   children,
   onInitialized,
+  onReady,
 }: ProfileInitializerProps) {
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -36,6 +38,7 @@ export default function ProfileInitializer({
       }
 
       setIsInitializing(false);
+      onReady?.();
     };
 
     initializeProfile();

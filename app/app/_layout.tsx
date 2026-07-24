@@ -6,7 +6,7 @@ import {
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
@@ -33,15 +33,27 @@ export default function RootLayout() {
 function AppLayout() {
   const colorScheme = useColorScheme();
   const { isLoading, hasActiveSubscription } = useRevenueCat();
+  const isProfileReady = useRef(false);
+
+  const maybeHideSplash = useCallback(() => {
+    if (!isLoading && isProfileReady.current) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
 
   useEffect(() => {
-    if (!isLoading) SplashScreen.hideAsync();
-  }, [isLoading]);
+    maybeHideSplash();
+  }, [maybeHideSplash]);
 
   const handleInitialized = (needsOnboarding: boolean) => {
     if (needsOnboarding || !hasActiveSubscription()) {
       router.replace("/onboarding");
     }
+  };
+
+  const handleProfileReady = () => {
+    isProfileReady.current = true;
+    maybeHideSplash();
   };
 
   return (
@@ -50,7 +62,10 @@ function AppLayout() {
         <ThemeProvider
           value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
-          <ProfileInitializer onInitialized={handleInitialized}>
+          <ProfileInitializer
+            onInitialized={handleInitialized}
+            onReady={handleProfileReady}
+          >
             <Stack>
               <Stack.Screen
                 name="(tabs)"
