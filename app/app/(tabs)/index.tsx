@@ -1,5 +1,12 @@
 import GradientBackground from "@/components/GradientBackground";
-import { db, habits, habitCompletions, dailyFocus, completionOps, dailyFocusOps } from "@/lib/db";
+import {
+  db,
+  habits,
+  habitCompletions,
+  dailyFocus,
+  completionOps,
+  dailyFocusOps,
+} from "@/lib/db";
 import {
   type DailyAffirmation,
   getDailyAffirmation,
@@ -24,6 +31,7 @@ import {
   TextInput,
   View,
   Keyboard,
+  useAnimatedValue,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -62,16 +70,19 @@ export default function HomeScreen() {
   const today = useMemo(() => getTodayInLocalTimezone(), []);
   const todayKey = getLocalDateString(today);
   const todayName = DAY_NAMES[today.getDay()];
-  const [dailyAffirmation, setDailyAffirmation] = useState<DailyAffirmation | null>(null);
+  const [dailyAffirmation, setDailyAffirmation] =
+    useState<DailyAffirmation | null>(null);
 
   const { data: allHabits } = useLiveQuery(db.select().from(habits));
-  const { data: allCompletions } = useLiveQuery(db.select().from(habitCompletions));
+  const { data: allCompletions } = useLiveQuery(
+    db.select().from(habitCompletions),
+  );
   const { data: focusRows } = useLiveQuery(
-    db.select().from(dailyFocus).orderBy(desc(dailyFocus.date)).limit(5)
+    db.select().from(dailyFocus).orderBy(desc(dailyFocus.date)).limit(5),
   );
   const todayFocus = useMemo(
     () => focusRows?.find((f) => f.date === todayKey) ?? null,
-    [focusRows, todayKey]
+    [focusRows, todayKey],
   );
 
   const [editingGoal, setEditingGoal] = useState(false);
@@ -113,12 +124,16 @@ export default function HomeScreen() {
     }
   };
 
-  const isEveningResetUnlocked = useMemo(() => __DEV__ || new Date().getHours() >= 21, []);
+  const isEveningResetUnlocked = useMemo(
+    () => __DEV__ || new Date().getHours() >= 21,
+    [],
+  );
   const [showResetLockMessage, setShowResetLockMessage] = useState(false);
   const [blockerStatus, setBlockerStatus] = useState("Not configured");
-  const [blockerSelection, setBlockerSelection] = useState<AppBlockerSelectionSummary>({
-    supported: appBlocker.isSupported,
-  });
+  const [blockerSelection, setBlockerSelection] =
+    useState<AppBlockerSelectionSummary>({
+      supported: appBlocker.isSupported,
+    });
   const [showBlockerPicker, setShowBlockerPicker] = useState(false);
 
   useEffect(() => {
@@ -158,9 +173,12 @@ export default function HomeScreen() {
   const firstName = userProfile?.name?.split(" ")[0] ?? "there";
   const goalText = (todayFocus?.goal ?? "").trim();
   const isGoalComplete = Boolean(todayFocus?.completedAt);
-  const habitsDoneCount = todayHabits.filter((habit) => doneIds.has(habit.id)).length;
+  const habitsDoneCount = todayHabits.filter((habit) =>
+    doneIds.has(habit.id),
+  ).length;
   const hasHabitsDue = todayHabits.length > 0;
-  const habitsComplete = !hasHabitsDue || habitsDoneCount === todayHabits.length;
+  const habitsComplete =
+    !hasHabitsDue || habitsDoneCount === todayHabits.length;
   const appLockUnlocked = isGoalComplete && habitsComplete;
   const hasBlockedAppSelection = Boolean(blockerSelection.hasSelection);
   const lockBlockers = [
@@ -177,7 +195,51 @@ export default function HomeScreen() {
         : "Nothing scheduled today",
     },
   ];
-  const goalConfettiProgress = useRef(new Animated.Value(0)).current;
+  const goalConfettiProgress = useAnimatedValue(0);
+
+  const goalConfettiStyles = useMemo(
+    () =>
+      GOAL_CONFETTI.map((piece) => {
+        const travel = goalConfettiProgress.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, 1],
+        });
+        return {
+          backgroundColor: piece.color,
+          opacity: goalConfettiProgress.interpolate({
+            inputRange: [0, 0.2, 1],
+            outputRange: [0, 1, 0],
+          }),
+          transform: [
+            {
+              translateX: travel.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, piece.x],
+              }),
+            },
+            {
+              translateY: travel.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, piece.y],
+              }),
+            },
+            {
+              rotate: goalConfettiProgress.interpolate({
+                inputRange: [0, 1],
+                outputRange: ["0deg", piece.rotate],
+              }),
+            },
+            {
+              scale: goalConfettiProgress.interpolate({
+                inputRange: [0, 0.2, 1],
+                outputRange: [0.4, 1, 0.8],
+              }),
+            },
+          ],
+        };
+      }),
+    [goalConfettiProgress],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -257,18 +319,25 @@ export default function HomeScreen() {
     }
   };
 
-  const handleBlockerSelectionChange = (metadata: AppBlockerSelectionMetadata) => {
+  const handleBlockerSelectionChange = (
+    metadata: AppBlockerSelectionMetadata,
+  ) => {
     const nextSelection = {
       supported: appBlocker.isSupported,
       applicationCount: metadata.applicationCount,
       categoryCount: metadata.categoryCount,
       webDomainCount: metadata.webDomainCount,
       hasSelection:
-        metadata.applicationCount + metadata.categoryCount + metadata.webDomainCount > 0,
+        metadata.applicationCount +
+          metadata.categoryCount +
+          metadata.webDomainCount >
+        0,
     };
 
     setBlockerSelection(nextSelection);
-    setBlockerStatus(nextSelection.hasSelection ? "Selection saved" : "No apps selected");
+    setBlockerStatus(
+      nextSelection.hasSelection ? "Selection saved" : "No apps selected",
+    );
   };
 
   const handleBlockerPickerDismiss = async () => {
@@ -370,12 +439,15 @@ export default function HomeScreen() {
                   />
                 ) : (
                   <Pressable onPress={openGoalEditor} hitSlop={10}>
-                    <Text style={goalText ? s.goalText : s.goalPlaceholderTitle}>
+                    <Text
+                      style={goalText ? s.goalText : s.goalPlaceholderTitle}
+                    >
                       {goalText || "Set one clear target"}
                     </Text>
                     {!goalText && (
                       <Text style={s.goalPlaceholderBody}>
-                        Choose the main outcome you want this day to revolve around.
+                        Choose the main outcome you want this day to revolve
+                        around.
                       </Text>
                     )}
                   </Pressable>
@@ -387,10 +459,21 @@ export default function HomeScreen() {
                 onPress={toggleGoalComplete}
                 hitSlop={10}
                 accessibilityRole="button"
-                accessibilityLabel={isGoalComplete ? "Mark today's goal undone" : "Mark today's goal done"}
+                accessibilityLabel={
+                  isGoalComplete
+                    ? "Mark today's goal undone"
+                    : "Mark today's goal done"
+                }
               >
-                <View style={[s.ringOuter, !isGoalComplete && !goalText && s.ringOuterDisabled]}>
-                  <View style={[s.ringInner, isGoalComplete && s.ringInnerDone]}>
+                <View
+                  style={[
+                    s.ringOuter,
+                    !isGoalComplete && !goalText && s.ringOuterDisabled,
+                  ]}
+                >
+                  <View
+                    style={[s.ringInner, isGoalComplete && s.ringInnerDone]}
+                  >
                     <Ionicons
                       name={isGoalComplete ? "checkmark" : "checkmark-outline"}
                       size={24}
@@ -399,59 +482,21 @@ export default function HomeScreen() {
                   </View>
                 </View>
                 <View pointerEvents="none" style={s.goalConfettiLayer}>
-                  {GOAL_CONFETTI.map((piece, index) => {
-                    const travel = goalConfettiProgress.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 1],
-                    });
-                    return (
-                      <Animated.View
-                        key={`${piece.color}-${index}`}
-                        style={[
-                          s.goalConfettiPiece,
-                          {
-                            backgroundColor: piece.color,
-                            opacity: goalConfettiProgress.interpolate({
-                              inputRange: [0, 0.2, 1],
-                              outputRange: [0, 1, 0],
-                            }),
-                            transform: [
-                              {
-                                translateX: travel.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [0, piece.x],
-                                }),
-                              },
-                              {
-                                translateY: travel.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [0, piece.y],
-                                }),
-                              },
-                              {
-                                rotate: goalConfettiProgress.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: ["0deg", piece.rotate],
-                                }),
-                              },
-                              {
-                                scale: goalConfettiProgress.interpolate({
-                                  inputRange: [0, 0.2, 1],
-                                  outputRange: [0.4, 1, 0.8],
-                                }),
-                              },
-                            ],
-                          },
-                        ]}
-                      />
-                    );
-                  })}
+                  {GOAL_CONFETTI.map((piece, index) => (
+                    <Animated.View
+                      key={`${piece.color}-${index}`}
+                      style={[s.goalConfettiPiece, goalConfettiStyles[index]]}
+                    />
+                  ))}
                 </View>
               </Pressable>
             </View>
 
             <Pressable
-              style={[s.focusButton, !editingGoal && !goalText && s.focusButtonDisabled]}
+              style={[
+                s.focusButton,
+                !editingGoal && !goalText && s.focusButtonDisabled,
+              ]}
               onPress={() => {
                 if (editingGoal) {
                   saveGoal();
@@ -471,7 +516,9 @@ export default function HomeScreen() {
                 size={16}
                 color={palette.white}
               />
-              <Text style={s.focusButtonText}>{editingGoal ? "Save" : "Start Focus"}</Text>
+              <Text style={s.focusButtonText}>
+                {editingGoal ? "Save" : "Start Focus"}
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -508,7 +555,13 @@ export default function HomeScreen() {
                         )}
                       </View>
                       <View style={[s.checkbox, done && s.checkboxDone]}>
-                        {done && <Ionicons name="checkmark" size={13} color={palette.white} />}
+                        {done && (
+                          <Ionicons
+                            name="checkmark"
+                            size={13}
+                            color={palette.white}
+                          />
+                        )}
                       </View>
                     </Pressable>
                   </View>
@@ -534,7 +587,10 @@ export default function HomeScreen() {
             <View style={s.resetDecor}>
               <Image
                 source={require("../../assets/evening.jpeg")}
-                style={[s.resetDecorImage, !isEveningResetUnlocked && s.resetDecorLocked]}
+                style={[
+                  s.resetDecorImage,
+                  !isEveningResetUnlocked && s.resetDecorLocked,
+                ]}
                 resizeMode="cover"
               />
               <View style={s.resetDecorOverlay} />
@@ -544,16 +600,28 @@ export default function HomeScreen() {
                 </View>
                 <Text style={s.resetTitle}>Declutter before tomorrow</Text>
                 <View>
-                  <Text style={[s.resetBody, showResetLockMessage && s.resetBodyHidden]}>
-                    Clear your space, close the loop on today, and set up tomorrow.
+                  <Text
+                    style={[
+                      s.resetBody,
+                      showResetLockMessage && s.resetBodyHidden,
+                    ]}
+                  >
+                    Clear your space, close the loop on today, and set up
+                    tomorrow.
                   </Text>
                   {showResetLockMessage && (
-                    <Text style={[s.resetLockMessage, StyleSheet.absoluteFill]}>Available after 9 PM</Text>
+                    <Text style={[s.resetLockMessage, StyleSheet.absoluteFill]}>
+                      Available after 9 PM
+                    </Text>
                   )}
                 </View>
               </View>
               <View style={s.resetAction}>
-                <Ionicons name="chevron-forward" size={18} color={palette.white} />
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={palette.white}
+                />
               </View>
             </View>
           </Pressable>
@@ -572,7 +640,9 @@ export default function HomeScreen() {
               </View>
               <View style={s.lockHeaderText}>
                 <Text style={s.lockTitle}>
-                  {appLockUnlocked ? "Scroll apps unlocked" : "Scroll apps stay locked"}
+                  {appLockUnlocked
+                    ? "Scroll apps unlocked"
+                    : "Scroll apps stay locked"}
                 </Text>
                 <Text style={s.lockSubtitle}>
                   {hasBlockedAppSelection
@@ -588,10 +658,21 @@ export default function HomeScreen() {
                   {index > 0 && <View style={s.lockDivider} />}
                   <View style={s.lockChecklistRow}>
                     <View style={[s.lockCheck, item.done && s.lockCheckDone]}>
-                      {item.done && <Ionicons name="checkmark" size={13} color={palette.white} />}
+                      {item.done && (
+                        <Ionicons
+                          name="checkmark"
+                          size={13}
+                          color={palette.white}
+                        />
+                      )}
                     </View>
                     <View style={s.lockChecklistText}>
-                      <Text style={[s.lockChecklistTitle, item.done && s.lockChecklistTitleDone]}>
+                      <Text
+                        style={[
+                          s.lockChecklistTitle,
+                          item.done && s.lockChecklistTitleDone,
+                        ]}
+                      >
                         {item.label}
                       </Text>
                       <Text style={s.lockChecklistDetail}>{item.detail}</Text>
@@ -607,16 +688,24 @@ export default function HomeScreen() {
               accessibilityRole="button"
               accessibilityLabel="Configure Screen Time app blocking"
             >
-              <Ionicons name="options-outline" size={16} color={palette.white} />
+              <Ionicons
+                name="options-outline"
+                size={16}
+                color={palette.white}
+              />
               <Text style={s.lockConfigureText}>
-                {hasBlockedAppSelection ? "Change Blocked Apps" : "Set Up Screen Time Lock"}
+                {hasBlockedAppSelection
+                  ? "Change Blocked Apps"
+                  : "Set Up Screen Time Lock"}
               </Text>
             </Pressable>
             {showBlockerPicker && (
               <AppBlockerSelectionSheet
                 familyActivitySelectionId={APP_BLOCKER_SELECTION_ID}
                 onDismissRequest={handleBlockerPickerDismiss}
-                onSelectionChange={(event) => handleBlockerSelectionChange(event.nativeEvent)}
+                onSelectionChange={(event) =>
+                  handleBlockerSelectionChange(event.nativeEvent)
+                }
                 style={s.lockPickerAnchor}
               />
             )}
@@ -992,7 +1081,10 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       alignItems: "center",
       justifyContent: "center",
     },
-    checkboxDone: { backgroundColor: palette.orangeStrong, borderColor: palette.orangeStrong },
+    checkboxDone: {
+      backgroundColor: palette.orangeStrong,
+      borderColor: palette.orangeStrong,
+    },
     emptyRow: { paddingVertical: 20, paddingHorizontal: 16 },
     emptyText: { fontSize: 14, color: C.textQuaternary, textAlign: "center" },
 

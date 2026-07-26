@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, Easing, Text, View } from "react-native";
+import React, { useEffect, useMemo } from "react";
+import { Animated, Easing, Text, useAnimatedValue, View } from "react-native";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ScreenShell } from "./shared";
@@ -30,7 +30,7 @@ export function HookScreen({ onNext }: { onNext: () => void }) {
 function FloatingTag({ label, index }: { label: string; index: number }) {
   const C = useTheme();
   const s = makeStyles(C);
-  const drift = useRef(new Animated.Value(0)).current;
+  const drift = useAnimatedValue(0);
 
   useEffect(() => {
     Animated.loop(
@@ -51,8 +51,13 @@ function FloatingTag({ label, index }: { label: string; index: number }) {
     ).start();
   }, [drift, index]);
 
-  const translateY = drift.interpolate({ inputRange: [0, 1], outputRange: [0, -9] });
-  const translateX = drift.interpolate({ inputRange: [0, 1], outputRange: [0, index % 2 ? -6 : 6] });
+  const { translateY, translateX } = useMemo(
+    () => ({
+      translateY: drift.interpolate({ inputRange: [0, 1], outputRange: [0, -9] }),
+      translateX: drift.interpolate({ inputRange: [0, 1], outputRange: [0, index % 2 ? -6 : 6] }),
+    }),
+    [drift, index],
+  );
   const positions = [
     { top: 26, left: 58 },
     { top: 78, left: 18 },
