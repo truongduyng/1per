@@ -300,12 +300,19 @@ export default function HomeScreen() {
   };
 
   const toggleGoalComplete = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (isGoalComplete) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await dailyFocusOps.markIncomplete();
       return;
     }
 
+    if (!goalText) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      openGoalEditor();
+      return;
+    }
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await dailyFocusOps.markComplete();
     playGoalConfetti();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -382,7 +389,7 @@ export default function HomeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={isGoalComplete ? "Mark today's goal undone" : "Mark today's goal done"}
               >
-                <View style={s.ringOuter}>
+                <View style={[s.ringOuter, !isGoalComplete && !goalText && s.ringOuterDisabled]}>
                   <View style={[s.ringInner, isGoalComplete && s.ringInnerDone]}>
                     <Ionicons
                       name={isGoalComplete ? "checkmark" : "checkmark-outline"}
@@ -764,6 +771,9 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       borderRightColor: palette.orange,
       alignItems: "center",
       justifyContent: "center",
+    },
+    ringOuterDisabled: {
+      opacity: 0.4,
     },
     ringInner: {
       width: 44,
