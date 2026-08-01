@@ -6,35 +6,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two independent projects:
 
-- `app/` — the Expo mobile app (bun)
+- `app/` — the Expo mobile app (npm)
 - `worker/` — Cloudflare Worker backend (D1 + Workers AI) for onboarding analytics and AI-generated affirmations
 
 Naming: the product is **1Per**, but the internal slug/bundle is `kadoze` (`app.kadoze.yikudo`). `README.md` is the PRD describing the current product.
 
 ## Commands
 
-App (run from `app/`, uses `bun`):
+App (run from `app/`, uses `npm`):
 
 ```bash
-bun run start        # Expo dev server
-bun run ios          # iOS simulator (targets 'iPhone 17')  |  make dev (from root)
-bun run lint
-bun run build        # EAS production build, iOS, --local   |  make build
-bun run submit       # Submit to App Store                  |  make submit
+npm run start        # Expo dev server
+npm run ios          # iOS simulator (targets 'iPhone 17')  |  make dev (from root)
+npm run lint
+npm run build        # EAS production build, iOS, --local   |  make build
+npm run submit       # Submit to App Store                  |  make submit
 ```
 
 Worker (run from `worker/`, or via root Makefile):
 
 ```bash
-bun run dev                # wrangler dev            |  make worker-dev
-bun run deploy             # wrangler deploy         |  make worker-deploy
-bun run db:migrate         # apply D1 migrations remote  |  make worker-migrate
-bun run db:migrate:local   # apply D1 migrations local   |  make worker-migrate-local
+npm run dev                # wrangler dev            |  make worker-dev
+npm run deploy             # wrangler deploy         |  make worker-deploy
+npm run db:migrate         # apply D1 migrations remote  |  make worker-migrate
+npm run db:migrate:local   # apply D1 migrations local   |  make worker-migrate-local
 ```
 
 Release: `make bump` (optionally `BUMP=minor|major`) bumps the version, builds, and submits.
 
 There is no test suite configured.
+
+### iOS native module errors ("Cannot find native module 'X'")
+
+If Metro reports a missing native module (e.g. `ExpoAsset`, `ExponentConstants`) after a dependency bump, the compiled native app is out of sync with `package.json`. Fix order:
+
+1. Confirm you're opening the **development build**, not Expo Go — Expo Go bundles a fixed SDK and cannot have project-specific native modules. In the `expo start` terminal, press `s` to ensure "Using development build" is shown, then `i`.
+2. `cd app/ios && pod install`, then rebuild (`npm run ios`).
+3. If the module is still missing from the compiled binary after that (check with `otool -L`/`nm` on the built `.app`, or an empty `Pods/<ModuleName>` source directory alongside a populated `Target Support Files/<ModuleName>`), CocoaPods' install is corrupted — remove `ios/Pods`, `ios/Podfile.lock`, and the stale `~/Library/Developer/Xcode/DerivedData/1Per-*` folder, then `pod install` and rebuild from scratch.
 
 ## Architecture Overview
 

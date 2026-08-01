@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import React, { useEffect, useMemo } from "react";
+import { Animated, StyleSheet, useAnimatedValue, View } from "react-native";
 
 type Props = {
   size?: number;
@@ -12,11 +12,10 @@ export default function ThreeDotsLoader({
   color = "rgba(255, 255, 255, 0.6)",
   gap = 5,
 }: Props) {
-  const dots = useRef([
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-  ]).current;
+  const dot0 = useAnimatedValue(0);
+  const dot1 = useAnimatedValue(0);
+  const dot2 = useAnimatedValue(0);
+  const dots = useMemo(() => [dot0, dot1, dot2], [dot0, dot1, dot2]);
 
   useEffect(() => {
     const animations = dots.map((dot) =>
@@ -38,19 +37,23 @@ export default function ThreeDotsLoader({
     };
   }, [dots]);
 
-  const dotStyle = (dot: Animated.Value) => ({
-    opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
-    transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
-    width: size,
-    height: size,
-    borderRadius: size / 2,
-    backgroundColor: color,
-  });
+  const dotStyles = useMemo(
+    () =>
+      dots.map((dot) => ({
+        opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+        transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: color,
+      })),
+    [color, dots, size],
+  );
 
   return (
     <View style={[styles.container, { gap }]}>
-      {dots.map((dot, i) => (
-        <Animated.View key={i} style={dotStyle(dot)} />
+      {dotStyles.map((style, i) => (
+        <Animated.View key={i} style={style} />
       ))}
     </View>
   );

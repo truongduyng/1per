@@ -34,19 +34,17 @@ half4 main(float2 xy) {
   wave += 0.5 * sin(dot(uv, direction) * 13.0 - time * speed * 0.45);
   wave = wave * 0.5 + 0.5;
 
-  float horizon = smoothstep(0.1, 0.95, uv.y);
-  float glow = smoothstep(0.2, 0.95, 1.0 - uv.y) * (0.35 + 0.65 * wave);
+  float glow = smoothstep(0.15, 1.0, 1.0 - uv.y) * (0.25 + 0.85 * wave);
   float3 sky = mix(skyTop, skyBottom, uv.y);
   float3 aurora = mix(color1, color2, smoothstep(0.15, 0.75, uv.x));
   aurora = mix(aurora, color3, smoothstep(0.5, 1.0, uv.x));
-  float veil = glow * (0.22 + 0.18 * horizon) * intensity;
+  float veil = clamp(glow * intensity, 0.0, 1.0);
+  float3 color = mix(sky, aurora, veil);
 
   // Fade to fully transparent near the bottom edge so the canvas blends into
   // whatever sits behind it instead of ending in a hard-edged rectangle.
-  float edgeFade = 1.0 - smoothstep(0.65, 1.0, uv.y);
-  float3 color = mix(sky, aurora, veil) * edgeFade;
-
-  return half4(color, edgeFade);
+  float edgeFade = smoothstep(1.0, 0.75, uv.y);
+  return half4(color * edgeFade, edgeFade);
 }
 `)!;
 
@@ -60,8 +58,8 @@ export type AuroraProps = {
   waveDirection?: [number, number];
 };
 
-const DEFAULT_AURORA_COLORS = ["#b8a1ff", "#78d7d0", "#f7c6a3"] as const;
-const DEFAULT_SKY_COLORS = ["#152238", "#273850"] as const;
+const DEFAULT_AURORA_COLORS = ["#F97316", "#FB923C", "#FCD34D"] as const;
+const DEFAULT_SKY_COLORS = ["#1A1A1A", "#2A1B12"] as const;
 
 // The default colors assume a dark backdrop. Over a light screen background
 // the dark navy sky reads as a muddy smear, so light mode gets its own pastel

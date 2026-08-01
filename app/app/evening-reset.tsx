@@ -10,9 +10,10 @@ import { getLocalDateString } from "@/lib/timezone";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
 import { desc, eq } from "drizzle-orm";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -29,6 +30,7 @@ const RING_SIZE = 248;
 const STROKE_WIDTH = 11;
 const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const HEADER_HEIGHT = Platform.OS === "ios" ? 44 : 56;
 const RESET_STEPS = [
   {
     title: "Clean your space",
@@ -226,12 +228,23 @@ export default function EveningResetScreen() {
       <GradientBackground />
       <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
         <Aurora
-          height={270}
+          height={390}
           intensity={isLight ? 0.45 : 0.7}
           auroraColors={isLight ? [...AURORA_LIGHT_AURORA_COLORS] : undefined}
           skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
         />
       </View>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTransparent: true,
+          title: "Evening Reset",
+          headerTintColor: C.textPrimary,
+          headerTitleStyle: { color: C.textPrimary },
+          headerShadowVisible: false,
+          headerBackButtonDisplayMode: "minimal",
+        }}
+      />
       <SafeAreaView style={s.safeArea}>
         <KeyboardAwareScrollView
           bottomOffset={32}
@@ -239,14 +252,6 @@ export default function EveningResetScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={s.header}>
-            <Pressable onPress={() => router.back()} hitSlop={10} style={s.headerButton}>
-              <Ionicons name="chevron-back" size={24} color={C.iconSecondary} />
-            </Pressable>
-            <Text style={s.headerTitle}>Evening Reset</Text>
-            <View style={s.headerSpacer} />
-          </View>
-
           <View style={s.timerContent}>
                 <View style={s.ringWrap}>
                   <Svg width={RING_SIZE} height={RING_SIZE} style={s.ringSvg}>
@@ -432,27 +437,9 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     auroraLight: { opacity: 0.5 },
     safeArea: { flex: 1, paddingHorizontal: 24 },
     scrollContent: { paddingBottom: 28 },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingTop: 8,
-    },
-    headerButton: {
-      width: 36,
-      height: 36,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    headerSpacer: { width: 36 },
-    headerTitle: {
-      color: C.textPrimary,
-      fontSize: 18,
-      fontWeight: "700",
-    },
     timerContent: {
       alignItems: "center",
-      paddingTop: 20,
+      paddingTop: HEADER_HEIGHT + 20,
       paddingBottom: 12,
     },
     ringWrap: {

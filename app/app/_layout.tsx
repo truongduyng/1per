@@ -77,11 +77,11 @@ function AppLayout() {
               />
               <Stack.Screen
                 name="focus"
-                options={{ headerShown: false, presentation: "card" }}
+                options={{ headerShown: true, presentation: "card" }}
               />
               <Stack.Screen
                 name="evening-reset"
-                options={{ headerShown: false, presentation: "card" }}
+                options={{ headerShown: true, presentation: "card" }}
               />
               <Stack.Screen name="settings" options={{ title: "Settings" }} />
             </Stack>

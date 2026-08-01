@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "1Per",
+    "name": "OnePer",
     "slug": "kadoze",
     "platforms": [
       "ios"
@@ -15,6 +15,7 @@
       "icon": "./assets/images/new_logo.png",
       "appleTeamId": "MVAX6C967A",
       "infoPlist": {
+        "CFBundleDisplayName": "1Per",
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "$(PRODUCT_NAME) needs microphone access to record voice notes.",
         "NSPhotoLibraryUsageDescription": "$(PRODUCT_NAME) needs access to your photo library to attach photos to your journal entries."

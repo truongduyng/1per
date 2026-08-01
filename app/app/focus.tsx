@@ -9,7 +9,7 @@ import { getLocalDateString } from "@/lib/timezone";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { eq } from "drizzle-orm";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
@@ -41,6 +41,8 @@ export default function FocusScreen() {
     db.select().from(dailyFocus).where(eq(dailyFocus.date, todayKey)).limit(1)
   );
   usePreventScreenSleep(isRunning && remainingSeconds > 0, "kadoze-focus-room");
+
+  const hasGoal = useMemo(() => Boolean(focusRows?.[0]?.goal?.trim()), [focusRows]);
 
   const goalText = useMemo(() => {
     const goal = focusRows?.[0]?.goal?.trim();
@@ -123,6 +125,10 @@ export default function FocusScreen() {
   };
 
   const finishFocusSession = async () => {
+    if (!hasGoal) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      return;
+    }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await persistElapsedFocusTime(true);
     await dailyFocusOps.markComplete();
@@ -134,42 +140,52 @@ export default function FocusScreen() {
 
   return (
     <View style={s.container}>
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          headerTransparent: true,
+          title: "Focus Room",
+          headerTintColor: C.textPrimary,
+          headerTitleStyle: { color: C.textPrimary },
+          headerShadowVisible: false,
+          headerBackButtonDisplayMode: "minimal",
+          headerLeft: () => (
+            <Pressable
+              onPress={() => {
+                void persistElapsedFocusTime(true);
+                router.back();
+              }}
+              hitSlop={10}
+            >
+              <Ionicons name="chevron-back" size={24} color={C.iconSecondary} />
+            </Pressable>
+          ),
+          headerRight: () => (
+            <Pressable
+              onPress={finishFocusSession}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Finish focus session"
+            >
+              <Ionicons
+                name="checkmark"
+                size={22}
+                color={hasGoal ? palette.orange : C.iconSecondary}
+              />
+            </Pressable>
+          ),
+        }}
+      />
       <GradientBackground />
       <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
         <Aurora
-          height={300}
+          height={420}
           intensity={isLight ? 0.5 : 0.8}
           auroraColors={isLight ? [...AURORA_LIGHT_AURORA_COLORS] : undefined}
           skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
         />
       </View>
       <SafeAreaView style={s.safeArea}>
-        <View style={s.header}>
-          <Pressable
-            onPress={() => {
-              void persistElapsedFocusTime(true);
-              router.back();
-            }}
-            hitSlop={10}
-            style={s.backButton}
-          >
-            <Ionicons name="chevron-back" size={24} color={C.iconSecondary} />
-          </Pressable>
-          <View style={s.titleWrap}>
-            <View style={s.liveDot} />
-            <Text style={s.title}>Focus Room</Text>
-          </View>
-          <Pressable
-            onPress={finishFocusSession}
-            hitSlop={10}
-            style={s.doneButton}
-            accessibilityRole="button"
-            accessibilityLabel="Finish focus session"
-          >
-            <Ionicons name="checkmark" size={22} color={palette.orange} />
-          </Pressable>
-        </View>
-
         <View style={s.content}>
           <Text style={s.goal}>{goalText}</Text>
           <Text style={s.subtitle}>Stay focused. Do one thing.</Text>
@@ -225,34 +241,6 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       flex: 1,
       paddingHorizontal: 24,
     },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingTop: 8,
-    },
-    backButton: {
-      width: 36,
-      height: 36,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    titleWrap: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
-    },
-    liveDot: {
-      width: 7,
-      height: 7,
-      borderRadius: 999,
-      backgroundColor: palette.orange,
-    },
-    title: {
-      color: C.textSecondary,
-      fontSize: 16,
-      fontWeight: "600",
-    },
     content: {
       flex: 1,
       alignItems: "center",
@@ -304,16 +292,6 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       backgroundColor: palette.orange,
       alignItems: "center",
       justifyContent: "center",
-    },
-    doneButton: {
-      width: 36,
-      height: 36,
-      borderRadius: 999,
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: C.inputBg,
-      borderWidth: 1,
-      borderColor: C.cardBorder,
     },
   });
 }
