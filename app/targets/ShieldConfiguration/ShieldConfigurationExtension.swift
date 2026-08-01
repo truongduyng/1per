@@ -98,9 +98,17 @@ func buildShield(placeholders: [String: String?], config: [String: Any]?)
       color: config["secondaryButtonLabelColor"] as? [String: Double]
     )
 
+    // `backgroundColor` alone is unreliable on ShieldConfiguration (the system
+    // sometimes falls back to its own light/dark-adaptive material instead of
+    // honoring a solid custom color), which can leave light text unreadable
+    // against a light system background. Always pair it with an explicit dark
+    // blur style so the shield stays legible regardless of system appearance.
+    let backgroundBlurStyle =
+      (config["backgroundBlurStyle"] as? Int).flatMap(UIBlurEffect.Style.init)
+      ?? .systemMaterialDark
+
     let shield = ShieldConfiguration(
-      backgroundBlurStyle: config["backgroundBlurStyle"] != nil
-        ? (config["backgroundBlurStyle"] as? Int).flatMap(UIBlurEffect.Style.init) : nil,
+      backgroundBlurStyle: backgroundBlurStyle,
       backgroundColor: backgroundColor,
       icon: resolveIcon(dict: config),
       title: buildLabel(text: title, with: titleColor, placeholders: placeholders),

@@ -1,7 +1,8 @@
 import GradientBackground from "@/components/GradientBackground";
-import Aurora from "@/components/Aurora";
+import Aurora, { AURORA_LIGHT_AURORA_COLORS, AURORA_LIGHT_SKY_COLORS } from "@/components/Aurora";
 import { palette } from "@/constants/theme";
 import { usePreventScreenSleep } from "@/hooks/usePreventScreenSleep";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/useTheme";
 import { buildEveningReflection } from "@/lib/eveningReflection";
 import { dailyFocus, dailyFocusOps, db, habitCompletions, habits, todoOps, todos } from "@/lib/db";
@@ -59,6 +60,8 @@ export default function EveningResetScreen() {
   const todayKey = useMemo(() => getLocalDateString(new Date()), []);
   const tomorrowKey = useMemo(() => getTomorrowKey(), []);
   const C = useTheme();
+  const colorScheme = useColorScheme();
+  const isLight = colorScheme === "light";
   const [remainingSeconds, setRemainingSeconds] = useState(RESET_DURATION_SECONDS);
   const [isRunning, setIsRunning] = useState(true);
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
@@ -221,8 +224,13 @@ export default function EveningResetScreen() {
   return (
     <View style={s.container}>
       <GradientBackground />
-      <View style={s.aurora} pointerEvents="none">
-        <Aurora height={270} intensity={0.7} />
+      <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
+        <Aurora
+          height={270}
+          intensity={isLight ? 0.45 : 0.7}
+          auroraColors={isLight ? [...AURORA_LIGHT_AURORA_COLORS] : undefined}
+          skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
+        />
       </View>
       <SafeAreaView style={s.safeArea}>
         <KeyboardAwareScrollView
@@ -421,6 +429,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
   return StyleSheet.create({
     container: { flex: 1 },
     aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.68 },
+    auroraLight: { opacity: 0.5 },
     safeArea: { flex: 1, paddingHorizontal: 24 },
     scrollContent: { paddingBottom: 28 },
     header: {
