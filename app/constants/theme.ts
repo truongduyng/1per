@@ -110,27 +110,27 @@ export const Colors = {
     // semantic surfaces
     screenBg: '#1A1A1A',
     heroBg: '#1A1A1A',
-    cardBg: palette.white06,
-    cardBorder: palette.white08,
+    cardBg: palette.white10,
+    cardBorder: palette.white14,
     sheetBg: '#1E1E1E',
     sheetHandle: 'rgba(255,255,255,0.2)',
-    inputBg: palette.white04,
-    inputBorder: palette.white10,
-    divider: palette.white08,
+    inputBg: palette.white08,
+    inputBorder: palette.white20,
+    divider: palette.white12,
     overlayBg: 'rgba(0,0,0,0.45)',
 
     // text
     textPrimary: palette.white,
     textSecondary: palette.white55,
-    textTertiary: palette.white35,
-    textQuaternary: palette.white25,
-    textPlaceholder: palette.white25,
+    textTertiary: palette.white50,
+    textQuaternary: palette.white40,
+    textPlaceholder: palette.white42,
     textInverse: '#0A0A0A',
 
     // interactive
     iconPrimary: palette.white,
     iconSecondary: palette.white70,
-    iconTertiary: palette.white40,
+    iconTertiary: palette.white45,
 
     // accent
     accent: palette.orange,
@@ -141,8 +141,8 @@ export const Colors = {
     accentBorderSubtle: palette.orange25,
 
     // heatmap
-    heatIdle: 'rgba(255,255,255,0.04)',
-    heatIdleBorder: 'rgba(255,255,255,0.06)',
+    heatIdle: 'rgba(255,255,255,0.07)',
+    heatIdleBorder: 'rgba(255,255,255,0.10)',
     heatLow: 'rgba(240,136,60,0.28)',
     heatMid: 'rgba(240,136,60,0.55)',
     heatHigh: palette.orange,

@@ -41,6 +41,8 @@ half4 main(float2 xy) {
   float veil = clamp(glow * intensity, 0.0, 1.0);
   float3 color = mix(sky, aurora, veil);
 
+  // Fade to fully transparent near the bottom edge so the canvas blends into
+  // whatever sits behind it instead of ending in a hard-edged rectangle.
   float edgeFade = smoothstep(1.0, 0.75, uv.y);
   return half4(color * edgeFade, edgeFade);
 }
@@ -58,6 +60,12 @@ export type AuroraProps = {
 
 const DEFAULT_AURORA_COLORS = ["#F97316", "#FB923C", "#FCD34D"] as const;
 const DEFAULT_SKY_COLORS = ["#1A1A1A", "#2A1B12"] as const;
+
+// The default colors assume a dark backdrop. Over a light screen background
+// the dark navy sky reads as a muddy smear, so light mode gets its own pastel
+// preset instead.
+export const AURORA_LIGHT_AURORA_COLORS = ["#FFC98B", "#BFEDE6", "#FFD3E0"] as const;
+export const AURORA_LIGHT_SKY_COLORS = ["#FFF8EE", "#FDEFDD"] as const;
 
 function hexToRgb(hex: string): [number, number, number] {
   const normalized = hex.replace("#", "");
