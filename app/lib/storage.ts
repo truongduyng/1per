@@ -11,6 +11,8 @@ export const STORAGE_KEYS = {
   EVENING_REMINDER_HOUR:    'reminder.evening.hour',
   EVENING_REMINDER_MINUTE:  'reminder.evening.minute',
   EVENING_REMINDER_ID:      'reminder.evening.notifId',
+  APP_LOCK_HOUR:            'appLock.hour',
+  APP_LOCK_MINUTE:          'appLock.minute',
 } as const;
 
 export type ReminderState = { enabled: boolean; hour: number; minute: number };

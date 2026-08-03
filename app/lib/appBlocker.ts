@@ -1,10 +1,15 @@
 import * as DeviceActivity from "react-native-device-activity";
+import { storage, STORAGE_KEYS } from "@/lib/storage";
 
 type AuthorizationStatus = "approved" | "denied" | "notDetermined" | "unsupported" | "unknown";
 
 export const APP_BLOCKER_SELECTION_ID = "kadoze-doomscroll-apps";
 
 const DAILY_LOCK_ACTIVITY_NAME = "kadoze-daily-lock";
+const DEFAULT_DAILY_LOCK_HOUR = 0;
+const DEFAULT_DAILY_LOCK_MINUTE = 0;
+
+export type DailyLockTime = { hour: number; minute: number };
 
 export type AppBlockerSelectionSummary = {
   supported: boolean;
@@ -63,7 +68,27 @@ function updateDefaultShield() {
   );
 }
 
+function readDailyLockTime(): DailyLockTime {
+  return {
+    hour: storage.getNumber(STORAGE_KEYS.APP_LOCK_HOUR) ?? DEFAULT_DAILY_LOCK_HOUR,
+    minute: storage.getNumber(STORAGE_KEYS.APP_LOCK_MINUTE) ?? DEFAULT_DAILY_LOCK_MINUTE,
+  };
+}
+
+// One second before `hour:minute`, wrapping past midnight - so the daily
+// interval covers the full 24h up to the moment it restarts.
+function intervalEndBefore({ hour, minute }: DailyLockTime) {
+  const totalSeconds = (((hour * 60 + minute) * 60 - 1) + 86400) % 86400;
+  return {
+    hour: Math.floor(totalSeconds / 3600),
+    minute: Math.floor((totalSeconds % 3600) / 60),
+    second: totalSeconds % 60,
+  };
+}
+
 function scheduleDailyLock() {
+  const lockTime = readDailyLockTime();
+
   DeviceActivity.configureActions({
     activityName: DAILY_LOCK_ACTIVITY_NAME,
     callbackName: "intervalDidStart",
@@ -78,8 +103,8 @@ function scheduleDailyLock() {
   return DeviceActivity.startMonitoring(
     DAILY_LOCK_ACTIVITY_NAME,
     {
-      intervalStart: { hour: 0, minute: 0, second: 0 },
-      intervalEnd: { hour: 23, minute: 59, second: 59 },
+      intervalStart: { hour: lockTime.hour, minute: lockTime.minute, second: 0 },
+      intervalEnd: intervalEndBefore(lockTime),
       repeats: true,
     },
     [],
@@ -130,6 +155,20 @@ export const appBlocker = {
     DeviceActivity.refreshManagedSettingsStore();
     // Keep the daily re-lock schedule registered even while unlocked today,
     // so the shield still comes back on its own at the start of tomorrow.
+    await scheduleDailyLock();
+    return true;
+  },
+
+  getDailyLockTime(): DailyLockTime {
+    return readDailyLockTime();
+  },
+
+  async setDailyLockTime(hour: number, minute: number) {
+    storage.set(STORAGE_KEYS.APP_LOCK_HOUR, hour);
+    storage.set(STORAGE_KEYS.APP_LOCK_MINUTE, minute);
+    if (!DeviceActivity.isAvailable()) return false;
+    // Re-register immediately so the new time takes effect without waiting
+    // for the next applyShield/clearShield call.
     await scheduleDailyLock();
     return true;
   },
