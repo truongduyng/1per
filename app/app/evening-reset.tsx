@@ -69,7 +69,7 @@ export default function EveningResetScreen() {
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
   const [goalDraft, setGoalDraft] = useState("");
   const [todoDraft, setTodoDraft] = useState("");
-  const [plannedTodos, setPlannedTodos] = useState<string[]>([]);
+  const [plannedTodos, setPlannedTodos] = useState<{ id: number | null; title: string }[]>([]);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [todayGoalHint, setTodayGoalHint] = useState("");
   const { data: focusRows } = useLiveQuery(
@@ -112,7 +112,11 @@ export default function EveningResetScreen() {
 
       setGoalDraft(focusRow?.goal ?? "");
       setTodayGoalHint(todayFocusRow?.goal ?? "");
-      setPlannedTodos(todoRows.map((todo) => todo.title.trim()).filter(Boolean));
+      setPlannedTodos(
+        todoRows
+          .map((todo) => ({ id: todo.id, title: todo.title.trim() }))
+          .filter((todo) => todo.title.length > 0)
+      );
     };
 
     void loadTomorrowPlan();
@@ -147,7 +151,7 @@ export default function EveningResetScreen() {
   const saveTomorrowPlan = async () => {
     const normalizedGoal = goalDraft.trim();
     const normalizedTodos = plannedTodos
-      .map((todo) => todo.trim())
+      .map((todo) => todo.title.trim())
       .filter(Boolean);
 
     if (!normalizedGoal || normalizedTodos.length === 0) return false;
@@ -213,12 +217,18 @@ export default function EveningResetScreen() {
     const normalized = todoDraft.trim();
     if (!normalized) return;
 
-    setPlannedTodos((current) => [...current, normalized]);
+    setPlannedTodos((current) => [...current, { id: null, title: normalized }]);
     setTodoDraft("");
   };
 
   const removePlannedTodo = (index: number) => {
-    setPlannedTodos((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    setPlannedTodos((current) => {
+      const todo = current[index];
+      if (todo?.id != null) {
+        void todoOps.delete(todo.id);
+      }
+      return current.filter((_, currentIndex) => currentIndex !== index);
+    });
   };
 
   const s = makeStyles(C);
@@ -363,11 +373,11 @@ export default function EveningResetScreen() {
                               <Text style={s.planSectionLabel}>TO-DO</Text>
                               <View style={s.todoCard}>
                                 {plannedTodos.map((todo, index) => (
-                                  <View key={`${todo}-${index}`}>
+                                  <View key={`${todo.id ?? "new"}-${index}`}>
                                     {index > 0 ? <View style={s.todoDivider} /> : null}
                                     <View style={s.todoRow}>
                                       <View style={s.todoBullet} />
-                                      <Text style={s.todoText}>{todo}</Text>
+                                      <Text style={s.todoText}>{todo.title}</Text>
                                       <Pressable
                                         style={s.todoDeleteButton}
                                         onPress={() => removePlannedTodo(index)}
