@@ -27,6 +27,7 @@ import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useReminderManager } from "@/hooks/useReminderManager";
+import { appBlocker } from "@/lib/appBlocker";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
 const PRIVACY_POLICY_URL = "https://yikudo.xyz/kadoze/privacy";
@@ -109,15 +110,29 @@ export default function SettingsScreen() {
     toggleEveningReminder,
   } = useReminderManager();
 
-  const [pickerTarget, setPickerTarget] = useState<'habit' | 'evening' | null>(null);
+  const [appLockTime, setAppLockTime] = useState(() => appBlocker.getDailyLockTime());
+  const [isUpdatingAppLockTime, setIsUpdatingAppLockTime] = useState(false);
+
+  const [pickerTarget, setPickerTarget] = useState<'habit' | 'evening' | 'appLock' | null>(null);
   const [draftDate, setDraftDate] = useState(new Date());
 
-  const openPicker = (target: 'habit' | 'evening') => {
-    const state = target === 'habit' ? habitState : eveningState;
+  const openPicker = (target: 'habit' | 'evening' | 'appLock') => {
+    const state =
+      target === 'habit' ? habitState : target === 'evening' ? eveningState : appLockTime;
     const d = new Date();
     d.setHours(state.hour, state.minute, 0, 0);
     setDraftDate(d);
     setPickerTarget(target);
+  };
+
+  const commitAppLockTime = async (hour: number, minute: number) => {
+    setIsUpdatingAppLockTime(true);
+    try {
+      await appBlocker.setDailyLockTime(hour, minute);
+      setAppLockTime({ hour, minute });
+    } finally {
+      setIsUpdatingAppLockTime(false);
+    }
   };
 
   const onPickerChange = (_event: any, selected?: Date) => {
@@ -125,19 +140,27 @@ export default function SettingsScreen() {
     if (!selected) return;
     setDraftDate(selected);
     if (Platform.OS === 'android') {
-      const isHabit = pickerTarget === 'habit';
-      const state = isHabit ? habitState : eveningState;
-      const toggle = isHabit ? toggleHabitReminder : toggleEveningReminder;
-      toggle(state.enabled, selected.getHours(), selected.getMinutes());
+      if (pickerTarget === 'appLock') {
+        commitAppLockTime(selected.getHours(), selected.getMinutes());
+      } else {
+        const isHabit = pickerTarget === 'habit';
+        const state = isHabit ? habitState : eveningState;
+        const toggle = isHabit ? toggleHabitReminder : toggleEveningReminder;
+        toggle(state.enabled, selected.getHours(), selected.getMinutes());
+      }
     }
   };
 
   const commitPicker = () => {
     if (!pickerTarget) return;
-    const isHabit = pickerTarget === 'habit';
-    const state = isHabit ? habitState : eveningState;
-    const toggle = isHabit ? toggleHabitReminder : toggleEveningReminder;
-    toggle(state.enabled, draftDate.getHours(), draftDate.getMinutes());
+    if (pickerTarget === 'appLock') {
+      commitAppLockTime(draftDate.getHours(), draftDate.getMinutes());
+    } else {
+      const isHabit = pickerTarget === 'habit';
+      const state = isHabit ? habitState : eveningState;
+      const toggle = isHabit ? toggleHabitReminder : toggleEveningReminder;
+      toggle(state.enabled, draftDate.getHours(), draftDate.getMinutes());
+    }
     setPickerTarget(null);
   };
 
@@ -261,6 +284,26 @@ export default function SettingsScreen() {
             )}
           </View>
         </View>
+
+        {appBlocker.isSupported && (
+          <View style={s.section}>
+            <Text selectable style={s.sectionLabel}>
+              App Lock
+            </Text>
+            <View style={s.listCard}>
+              <Pressable
+                style={s.listRow}
+                onPress={() => openPicker('appLock')}
+                disabled={isUpdatingAppLockTime}
+              >
+                <Text selectable style={s.rowLabel}>Daily reset time</Text>
+                <Text selectable style={[s.rowValue, { color: palette.orange }]}>
+                  {formatTime(appLockTime.hour, appLockTime.minute)}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
 
         <View style={s.section}>
           <Text selectable style={s.sectionLabel}>
