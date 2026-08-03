@@ -30,7 +30,6 @@ Professionals, solopreneurs, and continuous learners who want a distraction-free
 
 * **One Main Goal:** The day centers on a single self-chosen target. Setting it is the first prompt of the day.
 * **Today's Habits:** Habits scheduled for the current weekday, completable inline.
-* **Todos:** A short supporting task list with swipe actions.
 * **Daily Affirmation:** An AI-generated affirmation greets the user each morning (cached per date, offline-safe fallback).
 
 ### 5.2. Focus Sessions
@@ -46,7 +45,7 @@ Professionals, solopreneurs, and continuous learners who want a distraction-free
 ### 5.4. Evening Reset
 
 * **Guided Wind-Down:** A timed three-step ritual — clean your space, clean your mind, plan for tomorrow.
-* **Auto-Reflection:** The app builds a summary and a pattern insight from the day's goal, todos, and habit completions.
+* **Auto-Reflection:** The app builds a summary and a pattern insight from the day's goal and habit completions.
 
 ### 5.5. Doomscroll App Blocker (iOS)
 

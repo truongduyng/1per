@@ -5,7 +5,7 @@ let initializationPromise: Promise<void> | null = null;
 
 export async function resetDatabase() {
   try {
-    const tables = ['habit_completions', 'habits', 'daily_focus', 'daily_affirmations', 'profiles', 'todos'];
+    const tables = ['habit_completions', 'habits', 'daily_focus', 'daily_affirmations', 'profiles'];
     for (const table of tables) {
       await expoDb.execAsync(`DROP TABLE IF EXISTS ${table};`);
     }
@@ -101,17 +101,6 @@ export async function initializeDatabase() {
         ADD COLUMN evening_reset_completed_at INTEGER;
       `);
     }
-
-    expoDb.execSync(`
-      CREATE TABLE IF NOT EXISTS todos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-        date TEXT NOT NULL,
-        title TEXT NOT NULL,
-        done INTEGER NOT NULL DEFAULT 0,
-        sort_order INTEGER NOT NULL DEFAULT 0,
-        created_at INTEGER NOT NULL DEFAULT (unixepoch())
-      );
-    `);
 
     expoDb.execSync(`
       CREATE TABLE IF NOT EXISTS daily_affirmations (

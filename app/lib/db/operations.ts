@@ -1,7 +1,7 @@
 import { eq, desc, asc, count, and } from 'drizzle-orm';
 import {
   db,
-  profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, todos,
+  profiles, habits, habitCompletions, dailyFocus, dailyAffirmations,
   type NewProfile, type NewHabit, type NewHabitCompletion, type NewDailyFocus,
   type NewDailyAffirmation,
 } from './database';
@@ -252,30 +252,5 @@ export const dailyAffirmationOps = {
         })
         .returning()
     );
-  },
-};
-
-// ── todoOps ───────────────────────────────────────────────────────────────────
-export const todoOps = {
-  async getByDate(date: string) {
-    return await withInitializedDb(() =>
-      db.select().from(todos)
-        .where(eq(todos.date, date))
-        .orderBy(asc(todos.sortOrder), asc(todos.createdAt))
-    );
-  },
-
-  async add(date: string, title: string) {
-    return await withInitializedDb(() => db.insert(todos).values({ date, title }).returning());
-  },
-
-  async toggle(id: number, done: boolean) {
-    return await withInitializedDb(() =>
-      db.update(todos).set({ done }).where(eq(todos.id, id)).returning()
-    );
-  },
-
-  async delete(id: number) {
-    return await withInitializedDb(() => db.delete(todos).where(eq(todos.id, id)));
   },
 };

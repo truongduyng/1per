@@ -70,7 +70,7 @@ lib/
     schema.ts      Drizzle-ORM table definitions (single source of truth for types)
     database.ts    expo-sqlite connection + drizzle instance
     operations.ts  Typed CRUD helpers: profileOps, habitOps, completionOps,
-                   dailyFocusOps, dailyAffirmationOps, todoOps
+                   dailyFocusOps, dailyAffirmationOps
     index.ts       Re-exports + initializeDatabase() + resetDatabase()
   storage.ts     MMKV instance (theme prefs and lightweight key-value state)
   backend.ts     HTTP client for the worker (see "Backend worker" below)
@@ -85,7 +85,7 @@ constants/
 ### Data layer
 
 - **SQLite via expo-sqlite + Drizzle ORM** - no remote sync; purely local.
-- Schema tables: `profiles`, `habits`, `habit_completions`, `daily_focus`, `daily_affirmations`, `todos`.
+- Schema tables: `profiles`, `habits`, `habit_completions`, `daily_focus`, `daily_affirmations`.
 - `initializeDatabase()` runs `CREATE TABLE IF NOT EXISTS` on cold start via `ProfileInitializer`.
 - `resetDatabase()` drops all tables and clears MMKV - used in dev/reset flows.
 - Dates stored as `TEXT` (`'YYYY-MM-DD'`) for daily keys; timestamps stored as `INTEGER` (unix epoch).

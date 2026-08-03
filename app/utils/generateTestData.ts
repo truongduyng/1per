@@ -4,7 +4,6 @@ import {
   habitCompletions,
   habits,
   profiles,
-  todos,
 } from "@/lib/db";
 import { resetDatabase } from "@/lib/db/init";
 import { getLocalDateString } from "@/lib/timezone";
@@ -18,48 +17,9 @@ function daysAgo(count: number) {
   return date;
 }
 
-function atToday(hour: number, minute = 0) {
-  const date = new Date();
-  date.setHours(hour, minute, 0, 0);
-  return date;
-}
-
 function dateKey(count: number) {
   return getLocalDateString(daysAgo(count));
 }
-
-export const insertSampleTodos = async () => {
-  await db.insert(todos).values([
-    {
-      date: dateKey(0),
-      title: "Draft App Store screenshot captions",
-      done: true,
-      sortOrder: 0,
-      createdAt: atToday(7, 40),
-    },
-    {
-      date: dateKey(0),
-      title: "Record 25 minutes of uninterrupted focus",
-      done: true,
-      sortOrder: 1,
-      createdAt: atToday(7, 45),
-    },
-    {
-      date: dateKey(0),
-      title: "Review launch checklist with a fresh pass",
-      done: true,
-      sortOrder: 2,
-      createdAt: atToday(7, 50),
-    },
-    {
-      date: dateKey(0),
-      title: "Plan tomorrow before 9 PM",
-      done: false,
-      sortOrder: 3,
-      createdAt: atToday(7, 55),
-    },
-  ]);
-};
 
 export const insertAllScreenshotData = async () => {
   await resetDatabase();
@@ -185,6 +145,4 @@ export const insertAllScreenshotData = async () => {
     };
   });
   await db.insert(dailyFocus).values(focusRows);
-
-  await insertSampleTodos();
 };

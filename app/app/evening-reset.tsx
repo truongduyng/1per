@@ -5,7 +5,7 @@ import { usePreventScreenSleep } from "@/hooks/usePreventScreenSleep";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/useTheme";
 import { buildEveningReflection } from "@/lib/eveningReflection";
-import { dailyFocus, dailyFocusOps, db, habitCompletions, habits, todoOps, todos } from "@/lib/db";
+import { dailyFocus, dailyFocusOps, db, habitCompletions, habits } from "@/lib/db";
 import { getLocalDateString } from "@/lib/timezone";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -42,7 +42,7 @@ const RESET_STEPS = [
   },
   {
     title: "Plan for tomorrow",
-    hint: "Set one main goal and one first to-do so tomorrow starts with direction.",
+    hint: "Set one main goal so tomorrow starts with direction.",
   },
 ] as const;
 
@@ -68,15 +68,10 @@ export default function EveningResetScreen() {
   const [isRunning, setIsRunning] = useState(true);
   const [completedSteps, setCompletedSteps] = useState<Record<number, boolean>>({});
   const [goalDraft, setGoalDraft] = useState("");
-  const [todoDraft, setTodoDraft] = useState("");
-  const [plannedTodos, setPlannedTodos] = useState<{ id: number | null; title: string }[]>([]);
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [todayGoalHint, setTodayGoalHint] = useState("");
   const { data: focusRows } = useLiveQuery(
     db.select().from(dailyFocus).orderBy(desc(dailyFocus.date)).limit(14)
-  );
-  const { data: todayTodoRows } = useLiveQuery(
-    db.select().from(todos).where(eq(todos.date, todayKey))
   );
   const { data: habitRows } = useLiveQuery(db.select().from(habits));
   const { data: completionRows } = useLiveQuery(db.select().from(habitCompletions));
@@ -102,21 +97,15 @@ export default function EveningResetScreen() {
     let isActive = true;
 
     const loadTomorrowPlan = async () => {
-      const [[focusRow], [todayFocusRow], todoRows] = await Promise.all([
+      const [[focusRow], [todayFocusRow]] = await Promise.all([
         db.select().from(dailyFocus).where(eq(dailyFocus.date, tomorrowKey)).limit(1),
         db.select().from(dailyFocus).where(eq(dailyFocus.date, todayKey)).limit(1),
-        todoOps.getByDate(tomorrowKey),
       ]);
 
       if (!isActive) return;
 
       setGoalDraft(focusRow?.goal ?? "");
       setTodayGoalHint(todayFocusRow?.goal ?? "");
-      setPlannedTodos(
-        todoRows
-          .map((todo) => ({ id: todo.id, title: todo.title.trim() }))
-          .filter((todo) => todo.title.length > 0)
-      );
     };
 
     void loadTomorrowPlan();
@@ -141,20 +130,16 @@ export default function EveningResetScreen() {
       buildEveningReflection({
         todayKey,
         focusRows: focusRows ?? [],
-        todayTodos: todayTodoRows ?? [],
         habits: habitRows ?? [],
         completions: completionRows ?? [],
       }),
-    [completionRows, focusRows, habitRows, todayKey, todayTodoRows]
+    [completionRows, focusRows, habitRows, todayKey]
   );
 
   const saveTomorrowPlan = async () => {
     const normalizedGoal = goalDraft.trim();
-    const normalizedTodos = plannedTodos
-      .map((todo) => todo.title.trim())
-      .filter(Boolean);
 
-    if (!normalizedGoal || normalizedTodos.length === 0) return false;
+    if (!normalizedGoal) return false;
 
     setIsSavingPlan(true);
     try {
@@ -165,14 +150,6 @@ export default function EveningResetScreen() {
           target: [dailyFocus.date],
           set: { goal: normalizedGoal, updatedAt: new Date() },
         });
-
-      const existingTodos = await todoOps.getByDate(tomorrowKey);
-      const existingTitles = new Set(existingTodos.map((todo) => todo.title.trim()));
-      for (const todoTitle of normalizedTodos) {
-        if (!existingTitles.has(todoTitle)) {
-          await todoOps.add(tomorrowKey, todoTitle);
-        }
-      }
 
       return true;
     } finally {
@@ -210,24 +187,6 @@ export default function EveningResetScreen() {
         void dailyFocusOps.markEveningResetComplete();
       }
       return next;
-    });
-  };
-
-  const addPlannedTodo = () => {
-    const normalized = todoDraft.trim();
-    if (!normalized) return;
-
-    setPlannedTodos((current) => [...current, { id: null, title: normalized }]);
-    setTodoDraft("");
-  };
-
-  const removePlannedTodo = (index: number) => {
-    setPlannedTodos((current) => {
-      const todo = current[index];
-      if (todo?.id != null) {
-        void todoOps.delete(todo.id);
-      }
-      return current.filter((_, currentIndex) => currentIndex !== index);
     });
   };
 
@@ -369,44 +328,6 @@ export default function EveningResetScreen() {
                                   <Text style={s.hintButtonText} numberOfLines={1}>{todayGoalHint}</Text>
                                 </Pressable>
                               ) : null}
-
-                              <Text style={s.planSectionLabel}>TO-DO</Text>
-                              <View style={s.todoCard}>
-                                {plannedTodos.map((todo, index) => (
-                                  <View key={`${todo.id ?? "new"}-${index}`}>
-                                    {index > 0 ? <View style={s.todoDivider} /> : null}
-                                    <View style={s.todoRow}>
-                                      <View style={s.todoBullet} />
-                                      <Text style={s.todoText}>{todo.title}</Text>
-                                      <Pressable
-                                        style={s.todoDeleteButton}
-                                        onPress={() => removePlannedTodo(index)}
-                                        hitSlop={8}
-                                      >
-                                        <Text style={s.todoDeleteText}>×</Text>
-                                      </Pressable>
-                                    </View>
-                                  </View>
-                                ))}
-                                {plannedTodos.length > 0 ? <View style={s.todoDivider} /> : null}
-                                <View style={s.todoInputRow}>
-                                  <TextInput
-                                    style={s.todoInput}
-                                    value={todoDraft}
-                                    onChangeText={setTodoDraft}
-                                    placeholder="Add a task..."
-                                    placeholderTextColor={C.textPlaceholder}
-                                    returnKeyType="done"
-                                    submitBehavior="submit"
-                                    onSubmitEditing={addPlannedTodo}
-                                  />
-                                  {todoDraft.trim().length > 0 ? (
-                                    <Pressable style={s.todoAddButton} onPress={addPlannedTodo}>
-                                      <Ionicons name="add" size={18} color={palette.white} />
-                                    </Pressable>
-                                  ) : null}
-                                </View>
-                              </View>
                               {isSavingPlan ? <Text style={s.planSaving}>Saving...</Text> : null}
                             </View>
                           ) : null}
@@ -613,63 +534,6 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       paddingVertical: 13,
       fontSize: 15,
       textAlignVertical: "center",
-    },
-    todoCard: {
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: C.cardBorder,
-      backgroundColor: C.inputBg,
-      overflow: "hidden",
-    },
-    todoDivider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: C.divider,
-      marginHorizontal: 14,
-    },
-    todoRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 13,
-    },
-    todoBullet: {
-      width: 7,
-      height: 7,
-      borderRadius: 999,
-      backgroundColor: palette.orange,
-    },
-    todoText: {
-      flex: 1,
-      color: C.textPrimary,
-      fontSize: 15,
-    },
-    todoDeleteButton: { paddingHorizontal: 4 },
-    todoDeleteText: {
-      color: C.textTertiary,
-      fontSize: 22,
-      lineHeight: 24,
-    },
-    todoInputRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 10,
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-    },
-    todoInput: {
-      flex: 1,
-      color: C.textPrimary,
-      fontSize: 15,
-      paddingVertical: 4,
-    },
-    todoAddButton: {
-      width: 32,
-      height: 32,
-      backgroundColor: palette.orange,
-      borderRadius: 8,
-      alignItems: "center",
-      justifyContent: "center",
     },
     hintButton: {
       flexDirection: "row",

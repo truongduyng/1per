@@ -22,7 +22,6 @@ const FEATURES = [
   { icon: "infinite-outline" as const, text: "Unlimited custom habits" },
   { icon: "grid-outline" as const, text: "Full habit history & heatmap" },
   { icon: "flag-outline" as const, text: "Daily focus goal tracking" },
-  { icon: "checkmark-done-outline" as const, text: "Daily todos & task lists" },
   { icon: "moon-outline" as const, text: "Evening reset & routines" },
 ];
 

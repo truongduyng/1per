@@ -1,10 +1,9 @@
-import type { DailyFocus, Habit, HabitCompletion, Todo } from "@/lib/db";
+import type { DailyFocus, Habit, HabitCompletion } from "@/lib/db";
 import { getLocalDateString } from "@/lib/timezone";
 
 type EveningReflectionInput = {
   todayKey: string;
   focusRows: DailyFocus[];
-  todayTodos: Todo[];
   habits: Habit[];
   completions: HabitCompletion[];
 };
@@ -53,13 +52,11 @@ function getFocusStreak(focusRows: DailyFocus[], todayKey: string) {
 export function buildEveningReflection({
   todayKey,
   focusRows,
-  todayTodos,
   habits,
   completions,
 }: EveningReflectionInput): EveningReflection {
   const todayFocus = focusRows.find((row) => row.date === todayKey);
   const focusMinutes = todayFocus?.focusMinutes ?? 0;
-  const doneTodos = todayTodos.filter((todo) => todo.done);
   const todayCompletions = completions.filter(
     (completion) => completion.date === todayKey && completion.status === "done"
   );
@@ -72,10 +69,6 @@ export function buildEveningReflection({
   const summary = (() => {
     if (focusMinutes > 0) {
       return `You protected ${formatFocusDuration(focusMinutes)} of focus today.`;
-    }
-
-    if (doneTodos.length > 0) {
-      return `You closed ${doneTodos.length} task${doneTodos.length === 1 ? "" : "s"} today.`;
     }
 
     if (todayCompletions.length > 0) {
