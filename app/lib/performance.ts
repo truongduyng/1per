@@ -6,7 +6,7 @@ import {
   startOfYear,
   endOfYear,
 } from "date-fns";
-import { getLocalDateString, getStartOfDay } from "./timezone";
+import { getLocalDateString } from "./timezone";
 import {
   GRID_CONSTANTS,
   COLOR_THRESHOLDS,
@@ -37,24 +37,6 @@ interface DatedCompletion {
   status?: string | null;
 }
 
-interface TodoCompletion extends DatedCompletion {
-  todoId: number;
-  status: string;
-}
-
-interface GoalTodo {
-  id: number;
-  goalId: number | null;
-  daysOfWeek: string[];
-  createdAt: Date;
-}
-
-interface IndexedGoalTodo {
-  id: number;
-  daysSet: Set<string>;
-  createdKey: string;
-}
-
 const EMPTY_BOUNCEBACK_RESULT: BouncebackResult = {
   rate: 1,
   lastRecoveryDays: -1,
@@ -65,50 +47,6 @@ const EMPTY_BOUNCEBACK_RESULT: BouncebackResult = {
 // Utility Functions
 export function getDateKey(date: Date): string {
   return getLocalDateString(date);
-}
-
-function isDoneStatus(status?: string | null): boolean {
-  return status === undefined || status === null || status === "done";
-}
-
-function buildDoneDateCounts(completions: DatedCompletion[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-
-  for (const completion of completions) {
-    if (!isDoneStatus(completion.status)) continue;
-    counts[completion.completedDate] = (counts[completion.completedDate] ?? 0) + 1;
-  }
-
-  return counts;
-}
-
-function buildDoneCompletionSet(completions: TodoCompletion[]): Set<string> {
-  const completionSet = new Set<string>();
-
-  for (const completion of completions) {
-    if (completion.status !== "done") continue;
-    completionSet.add(`${completion.todoId}|${completion.completedDate}`);
-  }
-
-  return completionSet;
-}
-
-function indexTodosByGoal(todos: GoalTodo[]): Map<number, IndexedGoalTodo[]> {
-  const todosByGoal = new Map<number, IndexedGoalTodo[]>();
-
-  for (const todo of todos) {
-    if (todo.goalId === null) continue;
-
-    const goalTodos = todosByGoal.get(todo.goalId) ?? [];
-    goalTodos.push({
-      id: todo.id,
-      daysSet: new Set(todo.daysOfWeek),
-      createdKey: getLocalDateString(todo.createdAt),
-    });
-    todosByGoal.set(todo.goalId, goalTodos);
-  }
-
-  return todosByGoal;
 }
 
 export function getColorForCount(
@@ -215,86 +153,7 @@ export function generateUserGrid(_userCreationDate: Date): HeatmapDay[][] {
 
 
 
-// Accepts todo_completions rows - counts only 'done' records per date
-export function countTodosByDate(completions: DatedCompletion[]): Record<string, number> {
-  return buildDoneDateCounts(completions);
-}
-
-export function applyTodoCountsToGrid(
-  grid: HeatmapDay[][],
-  todoCounts: Record<string, number>,
-): HeatmapDay[][] {
-  return grid.map((week) =>
-    week.map((day) => ({
-      ...day,
-      count: todoCounts[getDateKey(day.date)] || 0,
-    })),
-  );
-}
-
-export interface GoalProgress {
-  goalId: number;
-  completed: number;
-  totalScheduled: number;
-  rate: number; // 0–1
-}
-
 export const DAY_NAMES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-
-export function computeGoalProgress(
-  goalIds: number[],
-  goalCreatedAts: Map<number, Date>,
-  goalTargetDates: Map<number, Date | null>,
-  allTodos: GoalTodo[],
-  allCompletions: TodoCompletion[],
-  today: Date = new Date(),
-): GoalProgress[] {
-  const completionSet = buildDoneCompletionSet(allCompletions);
-  const todayStart = getStartOfDay(today);
-  const todosByGoal = indexTodosByGoal(allTodos);
-
-  return goalIds.map((goalId) => {
-    const startDate = goalCreatedAts.get(goalId) ?? today;
-    const targetDate = goalTargetDates.get(goalId) ?? null;
-    const goalTodos = todosByGoal.get(goalId) ?? [];
-
-    let completed = 0;
-    let totalScheduled = 0;
-
-    // totalScheduled = all occurrences from start to targetDate (or today if no deadline)
-    // completed = occurrences actually done up to today
-    const scheduleEnd = targetDate ? getStartOfDay(targetDate) : todayStart;
-
-    const cursor = getStartOfDay(startDate);
-
-    while (cursor <= scheduleEnd) {
-      const dateKey = getLocalDateString(cursor);
-      const dayName = DAY_NAMES[cursor.getDay()];
-      const isFuture = cursor > todayStart;
-
-      for (const todo of goalTodos) {
-        // Skip if this todo didn't exist yet on this date
-        if (todo.createdKey > dateKey) continue;
-        if (todo.daysSet.has(dayName)) {
-          totalScheduled++;
-          // Only count completions for past/today dates
-          if (!isFuture && completionSet.has(`${todo.id}|${dateKey}`)) {
-            completed++;
-          }
-        }
-      }
-
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    return {
-      goalId,
-      completed,
-      totalScheduled,
-      rate: totalScheduled > 0 ? completed / totalScheduled : 0,
-    };
-  });
-}
 
 // ── Bounce-back Rate ─────────────────────────────────────────────────────────
 // After a 'failed' day, how quickly does the user return to 'done'?
@@ -397,7 +256,7 @@ export function computeEffectSizeCurve(
 
 
 
-export function computeStreaks(todoCounts: Record<string, number>): {
+export function computeStreaks(dateCounts: Record<string, number>): {
   currentStreak: number;
   bestStreak: number;
 } {
@@ -409,7 +268,7 @@ export function computeStreaks(todoCounts: Record<string, number>): {
   const cursor = new Date(today);
   while (true) {
     const key = getLocalDateString(cursor);
-    if (todoCounts[key] > 0) {
+    if (dateCounts[key] > 0) {
       currentStreak++;
       cursor.setDate(cursor.getDate() - 1);
     } else {
@@ -423,8 +282,8 @@ export function computeStreaks(todoCounts: Record<string, number>): {
   }
 
   // Best streak: iterate all dates with done records in sorted order
-  const doneDates = Object.keys(todoCounts)
-    .filter((k) => todoCounts[k] > 0)
+  const doneDates = Object.keys(dateCounts)
+    .filter((k) => dateCounts[k] > 0)
     .sort();
 
   let bestStreak = currentStreak;

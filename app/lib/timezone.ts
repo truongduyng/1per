@@ -90,7 +90,7 @@ export function formatDateInLocalTimezone(
 }
 
 /**
- * Format a goal/todo target date for display, e.g. "Mar 6, 2026"
+ * Format a goal target date for display, e.g. "Mar 6, 2026"
  * Returns null when date is falsy.
  */
 export function formatTargetDate(date: Date | string | null | undefined): string | null {
