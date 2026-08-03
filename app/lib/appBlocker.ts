@@ -4,6 +4,8 @@ type AuthorizationStatus = "approved" | "denied" | "notDetermined" | "unsupporte
 
 export const APP_BLOCKER_SELECTION_ID = "kadoze-doomscroll-apps";
 
+const DAILY_LOCK_ACTIVITY_NAME = "kadoze-daily-lock";
+
 export type AppBlockerSelectionSummary = {
   supported: boolean;
   applicationCount?: number;
@@ -61,6 +63,29 @@ function updateDefaultShield() {
   );
 }
 
+function scheduleDailyLock() {
+  DeviceActivity.configureActions({
+    activityName: DAILY_LOCK_ACTIVITY_NAME,
+    callbackName: "intervalDidStart",
+    actions: [
+      {
+        type: "blockSelection",
+        familyActivitySelectionId: APP_BLOCKER_SELECTION_ID,
+      },
+    ],
+  });
+
+  return DeviceActivity.startMonitoring(
+    DAILY_LOCK_ACTIVITY_NAME,
+    {
+      intervalStart: { hour: 0, minute: 0, second: 0 },
+      intervalEnd: { hour: 23, minute: 59, second: 59 },
+      repeats: true,
+    },
+    [],
+  );
+}
+
 function mapAuthorizationStatus(
   status: DeviceActivity.AuthorizationStatusType,
 ): AuthorizationStatus {
@@ -93,6 +118,9 @@ export const appBlocker = {
     updateDefaultShield();
     DeviceActivity.blockSelection(getSelectionInput(), "Kadoze anti-doomscroll lock active");
     DeviceActivity.refreshManagedSettingsStore();
+    // Registers an OS-level schedule so the shield re-applies itself at the
+    // start of every day even if the app is never opened that day.
+    await scheduleDailyLock();
     return this.getSelectionSummary();
   },
 
@@ -100,6 +128,9 @@ export const appBlocker = {
     if (!DeviceActivity.isAvailable()) return false;
     DeviceActivity.unblockSelection(getSelectionInput(), "Kadoze anti-doomscroll lock unlocked");
     DeviceActivity.refreshManagedSettingsStore();
+    // Keep the daily re-lock schedule registered even while unlocked today,
+    // so the shield still comes back on its own at the start of tomorrow.
+    await scheduleDailyLock();
     return true;
   },
 
