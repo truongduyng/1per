@@ -1,12 +1,15 @@
 import { eq, desc, asc, count, and } from 'drizzle-orm';
 import {
   db,
-  profiles, habits, habitCompletions, dailyFocus, dailyAffirmations,
+  profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, challenges,
   type NewProfile, type NewHabit, type NewHabitCompletion, type NewDailyFocus,
   type NewDailyAffirmation,
 } from './database';
 import { ensureDatabaseInitialized } from './init';
 import { getLocalDateString } from '../timezone';
+import type { PresetChallenge } from '../presetChallenges';
+
+const ALL_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 async function withInitializedDb<T>(operation: () => Promise<T>): Promise<T> {
   await ensureDatabaseInitialized();
@@ -117,6 +120,59 @@ export const completionOps = {
 
   async deleteAll() {
     return await withInitializedDb(() => db.delete(habitCompletions));
+  },
+};
+
+// ── challengeOps ──────────────────────────────────────────────────────────────
+// Preset challenges (e.g. "75 Hard"): a fixed-duration bundle of habits started together.
+export const challengeOps = {
+  async getAll() {
+    return await withInitializedDb(() =>
+      db.select().from(challenges).orderBy(desc(challenges.createdAt))
+    );
+  },
+
+  async start(preset: PresetChallenge) {
+    return await withInitializedDb(async () => {
+      const startDate = getLocalDateString(new Date());
+      const [challenge] = await db.insert(challenges).values({
+        presetId: preset.id,
+        title: preset.title,
+        subtitle: preset.subtitle,
+        icon: preset.icon,
+        durationDays: preset.durationDays,
+        startDate,
+      }).returning();
+
+      const existingHabits = await db.select({ id: habits.id }).from(habits);
+      const baseSortOrder = existingHabits.length;
+
+      const newHabits = await db.insert(habits).values(
+        preset.rules.map((rule, index) => ({
+          title: rule.title,
+          subtitle: rule.subtitle ?? null,
+          icon: rule.icon,
+          daysOfWeek: [...ALL_DAYS],
+          isLocked: false,
+          sortOrder: baseSortOrder + index,
+          challengeId: challenge.id,
+        }))
+      ).returning();
+
+      return { challenge, habits: newHabits };
+    });
+  },
+
+  // Ends the challenge countdown but keeps its habits as regular ongoing habits.
+  async end(id: number) {
+    return await withInitializedDb(async () => {
+      await db.update(habits).set({ challengeId: null }).where(eq(habits.challengeId, id));
+      await db.delete(challenges).where(eq(challenges.id, id));
+    });
+  },
+
+  async deleteAll() {
+    return await withInitializedDb(() => db.delete(challenges));
   },
 };
 

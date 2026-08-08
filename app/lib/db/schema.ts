@@ -12,6 +12,19 @@ export const profiles = sqliteTable('profiles', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// ── challenges ───────────────────────────────────────────────────────────────
+// A bundled, fixed-duration set of daily rules (e.g. "75 Hard") started from a preset.
+export const challenges = sqliteTable('challenges', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  presetId: text('preset_id').notNull(),
+  title: text('title').notNull(),
+  subtitle: text('subtitle'),
+  icon: text('icon'),                            // Ionicon name
+  durationDays: integer('duration_days').notNull(),
+  startDate: text('start_date').notNull(),       // 'YYYY-MM-DD'
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
 // ── habits ────────────────────────────────────────────────────────────────────
 // Recurring daily habits (keystone + future unlocked ones)
 export const habits = sqliteTable('habits', {
@@ -22,6 +35,7 @@ export const habits = sqliteTable('habits', {
   daysOfWeek: text('days_of_week', { mode: 'json' }).$type<string[]>().notNull(), // ['mon','tue',…]
   isLocked: integer('is_locked', { mode: 'boolean' }).notNull().default(false),
   sortOrder: integer('sort_order').notNull().default(0),
+  challengeId: integer('challenge_id').references(() => challenges.id), // set when created as part of a preset challenge
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
@@ -62,6 +76,9 @@ export const dailyAffirmations = sqliteTable('daily_affirmations', {
 // ── TypeScript types ──────────────────────────────────────────────────────────
 export type Profile = typeof profiles.$inferSelect;
 export type NewProfile = typeof profiles.$inferInsert;
+
+export type Challenge = typeof challenges.$inferSelect;
+export type NewChallenge = typeof challenges.$inferInsert;
 
 export type Habit = typeof habits.$inferSelect;
 export type NewHabit = typeof habits.$inferInsert;

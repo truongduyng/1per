@@ -84,6 +84,7 @@ function AppLayout() {
                 options={{ headerShown: true, presentation: "card" }}
               />
               <Stack.Screen name="settings" options={{ title: "Settings" }} />
+              <Stack.Screen name="challenges" options={{ title: "Challenges" }} />
             </Stack>
           </ProfileInitializer>
           <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />

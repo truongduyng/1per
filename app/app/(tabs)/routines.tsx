@@ -7,17 +7,21 @@ import {
   habits,
   habitCompletions,
   dailyFocus,
+  challenges,
   completionOps,
   habitOps,
+  challengeOps,
 } from "@/lib/db";
 import { KEYSTONE_HABITS_BY_FOCUS } from "@/hooks/useOnboarding";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import Svg, { Circle } from "react-native-svg";
 import {
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -307,6 +311,11 @@ function habitKey(title: string, subtitle?: string | null) {
   return `${title}::${subtitle ?? ""}`;
 }
 
+function parseDateKey(key: string): Date {
+  const [year, month, day] = key.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
 const MAIN_GOAL_HABIT_ID = -1;
 const EVENING_RESET_HABIT_ID = -2;
 const ALL_DAYS_LIST = [...ALL_DAYS];
@@ -323,6 +332,7 @@ export default function RoutinesScreen() {
   const { data: allHabits } = useLiveQuery(db.select().from(habits));
   const { data: allCompletions } = useLiveQuery(db.select().from(habitCompletions));
   const { data: allFocusRows } = useLiveQuery(db.select().from(dailyFocus));
+  const { data: activeChallenges } = useLiveQuery(db.select().from(challenges));
 
   const specialHabits = useMemo(() => {
     const rows = allFocusRows ?? [];
@@ -521,6 +531,21 @@ export default function RoutinesScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  const endChallenge = (id: number, title: string) => {
+    Alert.alert(
+      `End "${title}"?`,
+      "Its habits will stay in Active Habits — only the challenge countdown ends.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "End Challenge",
+          style: "destructive",
+          onPress: () => challengeOps.end(id),
+        },
+      ],
+    );
+  };
+
   const s = makeStyles(C);
 
   return (
@@ -660,6 +685,72 @@ export default function RoutinesScreen() {
               );
             })}
           </View>
+        </View>
+
+        <View style={s.section}>
+          <View style={s.sectionLabelRow}>
+            <Text style={s.sectionLabel}>CHALLENGES</Text>
+            <Pressable
+              style={s.addHabitInlineBtn}
+              onPress={() => router.push("/challenges")}
+            >
+              <Ionicons name="add" size={14} color={C.accentText} />
+              <Text style={s.addHabitInlineBtnText}>Start</Text>
+            </Pressable>
+          </View>
+          {(activeChallenges ?? []).length > 0 ? (
+            <View style={s.habitList}>
+              {(activeChallenges ?? []).map((challenge) => {
+                const startDateObj = parseDateKey(challenge.startDate);
+                const daysElapsed = Math.round(
+                  (today.getTime() - startDateObj.getTime()) / 86400000,
+                );
+                const dayNumber = Math.min(daysElapsed + 1, challenge.durationDays);
+                const isComplete = daysElapsed >= challenge.durationDays;
+                const progress = Math.max(0, Math.min(dayNumber / challenge.durationDays, 1));
+                return (
+                  <View key={challenge.id} style={s.habitCard}>
+                    <View style={s.habitCardRow}>
+                      <View style={s.habitIconWrap}>
+                        <Ionicons
+                          name={resolveIoniconName(challenge.icon, "flame-outline")}
+                          size={22}
+                          color={C.accentText}
+                        />
+                      </View>
+                      <View style={s.habitInfo}>
+                        <Text style={s.habitTitle} numberOfLines={1}>
+                          {challenge.title}
+                        </Text>
+                        <Text style={s.habitDuration}>
+                          {isComplete
+                            ? "Complete"
+                            : `Day ${dayNumber} of ${challenge.durationDays}`}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => endChallenge(challenge.id, challenge.title)}
+                        hitSlop={12}
+                        accessibilityRole="button"
+                        accessibilityLabel="End challenge"
+                      >
+                        <Ionicons name="close-circle-outline" size={20} color={C.textQuaternary} />
+                      </Pressable>
+                    </View>
+                    <View style={s.challengeProgressTrack}>
+                      <View style={[s.challengeProgressFill, { width: `${progress * 100}%` }]} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Pressable style={s.emptyChallengeCard} onPress={() => router.push("/challenges")}>
+              <Ionicons name="flag-outline" size={18} color={C.iconSecondary} />
+              <Text style={s.emptyChallengeText}>Try a preset challenge like 75 Hard</Text>
+              <Ionicons name="chevron-forward" size={16} color={C.textQuaternary} />
+            </Pressable>
+          )}
         </View>
 
         <View style={s.section}>
@@ -919,6 +1010,35 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       lineHeight: 18,
     },
     habitList: { gap: 10 },
+    challengeProgressTrack: {
+      height: 6,
+      borderRadius: 999,
+      backgroundColor: C.inputBg,
+      overflow: "hidden",
+      marginTop: 14,
+    },
+    challengeProgressFill: {
+      height: "100%",
+      borderRadius: 999,
+      backgroundColor: C.accent,
+    },
+    emptyChallengeCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      backgroundColor: C.cardBg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+    },
+    emptyChallengeText: {
+      flex: 1,
+      fontSize: 14,
+      fontWeight: "500",
+      color: C.textSecondary,
+    },
     habitCard: {
       backgroundColor: C.cardBg,
       borderRadius: 16,
