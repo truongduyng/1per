@@ -128,8 +128,7 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
     setRestoring(true);
     try {
       const info = await Purchases.restorePurchases();
-      const hasAccess =
-        typeof info.entitlements.active["full"] !== "undefined";
+      const hasAccess = typeof info.entitlements.active["full"] !== "undefined";
       if (hasAccess) {
         await refreshCustomerInfo();
         onComplete();
@@ -144,8 +143,12 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
   };
 
   const busy = purchasing || restoring;
-  const isSelectedAnnual = effectiveSelected ? isAnnualPackage(effectiveSelected) : false;
-  const isSelectedLifetime = effectiveSelected ? isLifetimePackage(effectiveSelected) : false;
+  const isSelectedAnnual = effectiveSelected
+    ? isAnnualPackage(effectiveSelected)
+    : false;
+  const isSelectedLifetime = effectiveSelected
+    ? isLifetimePackage(effectiveSelected)
+    : false;
   const ctaLabel = isSelectedLifetime
     ? "Change my life, forever"
     : "Start changing my life";
@@ -159,7 +162,8 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
       <View style={s.header}>
         <Text style={s.headline}>Protect your momentum</Text>
         <Text style={s.sub}>
-          Go further with 1Per Pro.
+          Go further with 1Per Full Access. Unlock all features and support the
+          app.
         </Text>
       </View>
 
@@ -196,9 +200,11 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
               const { product } = pkg;
               const isAnnual = isAnnualPackage(pkg);
               const isLifetime = isLifetimePackage(pkg);
-              const isSelected = effectiveSelected?.identifier === pkg.identifier;
+              const isSelected =
+                effectiveSelected?.identifier === pkg.identifier;
               const weeks = packageWeeks(pkg);
-              const perWeek = !isLifetime && weeks > 0 ? product.price / weeks : null;
+              const perWeek =
+                !isLifetime && weeks > 0 ? product.price / weeks : null;
               const perWeekStr = perWeek
                 ? perWeek.toLocaleString("en-US", {
                     style: "currency",
@@ -208,8 +214,13 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
                   })
                 : null;
               const savingsPct =
-                !isLifetime && weeklyPricePerWeek && weeks > 1 && pkg.packageType !== "WEEKLY"
-                  ? Math.round((1 - product.price / weeks / weeklyPricePerWeek) * 100)
+                !isLifetime &&
+                weeklyPricePerWeek &&
+                weeks > 1 &&
+                pkg.packageType !== "WEEKLY"
+                  ? Math.round(
+                      (1 - product.price / weeks / weeklyPricePerWeek) * 100,
+                    )
                   : null;
               return (
                 <TouchableOpacity
@@ -227,23 +238,31 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
                     />
                     <View style={s.pkgInfo}>
                       <View style={s.pkgTitleRow}>
-                        <Text style={[s.pkgTitle, isSelected && s.pkgTitleSelected]}>
+                        <Text
+                          style={[s.pkgTitle, isSelected && s.pkgTitleSelected]}
+                        >
                           {packageLabel(pkg)}
                         </Text>
                         {isLifetime || isAnnual ? (
                           <View style={s.bestValueBadge}>
-                            <Text style={s.bestValueText}>{isLifetime ? "One-time" : "Best value"}</Text>
+                            <Text style={s.bestValueText}>
+                              {isLifetime ? "One-time" : "Best value"}
+                            </Text>
                           </View>
                         ) : null}
                         {isLifetime ? (
-                          <Text style={s.pkgTrial}>Pay once, yours forever</Text>
+                          <Text style={s.pkgTrial}>
+                            Pay once, yours forever
+                          </Text>
                         ) : isAnnual ? (
                           <Text style={s.pkgTrial}>3-day free trial</Text>
                         ) : null}
                       </View>
                     </View>
                     <View style={s.pkgPriceCol}>
-                      <Text style={[s.pkgPrice, isSelected && s.pkgPriceSelected]}>
+                      <Text
+                        style={[s.pkgPrice, isSelected && s.pkgPriceSelected]}
+                      >
                         {product.priceString}
                       </Text>
                       <View style={s.pkgPriceSubRow}>
