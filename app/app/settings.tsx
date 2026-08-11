@@ -19,10 +19,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import GradientBackground from "@/components/GradientBackground";
 import { resetDatabase } from "@/lib/db";
 import { insertAllScreenshotData } from "@/utils/generateTestData";
-import {
-  ThemePreference,
-  useThemePreference,
-} from "@/contexts/ThemeContext";
+import { ThemePreference, useThemePreference } from "@/contexts/ThemeContext";
 import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
@@ -30,8 +27,8 @@ import { useReminderManager } from "@/hooks/useReminderManager";
 import { appBlocker } from "@/lib/appBlocker";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
-const PRIVACY_POLICY_URL = "https://yikudo.xyz/kadoze/privacy";
-const TERMS_OF_SERVICE_URL = "https://yikudo.xyz/kadoze/terms";
+const PRIVACY_POLICY_URL = "https://yikudo.xyz/1per/privacy";
+const TERMS_OF_SERVICE_URL = "https://yikudo.xyz/1per/terms";
 const SHOW_SCREENSHOT_DATA_ACTION =
   __DEV__ || Constants.expoConfig?.extra?.enableScreenshotData === true;
 
@@ -110,15 +107,23 @@ export default function SettingsScreen() {
     toggleEveningReminder,
   } = useReminderManager();
 
-  const [appLockTime, setAppLockTime] = useState(() => appBlocker.getDailyLockTime());
+  const [appLockTime, setAppLockTime] = useState(() =>
+    appBlocker.getDailyLockTime(),
+  );
   const [isUpdatingAppLockTime, setIsUpdatingAppLockTime] = useState(false);
 
-  const [pickerTarget, setPickerTarget] = useState<'habit' | 'evening' | 'appLock' | null>(null);
+  const [pickerTarget, setPickerTarget] = useState<
+    "habit" | "evening" | "appLock" | null
+  >(null);
   const [draftDate, setDraftDate] = useState(new Date());
 
-  const openPicker = (target: 'habit' | 'evening' | 'appLock') => {
+  const openPicker = (target: "habit" | "evening" | "appLock") => {
     const state =
-      target === 'habit' ? habitState : target === 'evening' ? eveningState : appLockTime;
+      target === "habit"
+        ? habitState
+        : target === "evening"
+          ? eveningState
+          : appLockTime;
     const d = new Date();
     d.setHours(state.hour, state.minute, 0, 0);
     setDraftDate(d);
@@ -136,14 +141,14 @@ export default function SettingsScreen() {
   };
 
   const onPickerChange = (_event: any, selected?: Date) => {
-    if (Platform.OS === 'android') setPickerTarget(null);
+    if (Platform.OS === "android") setPickerTarget(null);
     if (!selected) return;
     setDraftDate(selected);
-    if (Platform.OS === 'android') {
-      if (pickerTarget === 'appLock') {
+    if (Platform.OS === "android") {
+      if (pickerTarget === "appLock") {
         commitAppLockTime(selected.getHours(), selected.getMinutes());
       } else {
-        const isHabit = pickerTarget === 'habit';
+        const isHabit = pickerTarget === "habit";
         const state = isHabit ? habitState : eveningState;
         const toggle = isHabit ? toggleHabitReminder : toggleEveningReminder;
         toggle(state.enabled, selected.getHours(), selected.getMinutes());
@@ -153,10 +158,10 @@ export default function SettingsScreen() {
 
   const commitPicker = () => {
     if (!pickerTarget) return;
-    if (pickerTarget === 'appLock') {
+    if (pickerTarget === "appLock") {
       commitAppLockTime(draftDate.getHours(), draftDate.getMinutes());
     } else {
-      const isHabit = pickerTarget === 'habit';
+      const isHabit = pickerTarget === "habit";
       const state = isHabit ? habitState : eveningState;
       const toggle = isHabit ? toggleHabitReminder : toggleEveningReminder;
       toggle(state.enabled, draftDate.getHours(), draftDate.getMinutes());
@@ -165,15 +170,19 @@ export default function SettingsScreen() {
   };
 
   const formatTime = (hour: number, minute: number) => {
-    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const ampm = hour >= 12 ? "PM" : "AM";
     const h = hour % 12 || 12;
-    const m = minute.toString().padStart(2, '0');
+    const m = minute.toString().padStart(2, "0");
     return `${h}:${m} ${ampm}`;
   };
 
   const s = makeStyles(C, insets);
-  const reminderSwitchTrackColor = { false: C.cardBorder, true: palette.orange };
-  const reminderSwitchThumbColor = Platform.OS === "android" ? C.cardBg : undefined;
+  const reminderSwitchTrackColor = {
+    false: C.cardBorder,
+    true: palette.orange,
+  };
+  const reminderSwitchThumbColor =
+    Platform.OS === "android" ? C.cardBg : undefined;
 
   return (
     <View style={s.container}>
@@ -238,10 +247,14 @@ export default function SettingsScreen() {
           </Text>
           <View style={s.listCard}>
             <View style={s.listRow}>
-              <Text selectable style={s.rowLabel}>Daily habit check-in</Text>
+              <Text selectable style={s.rowLabel}>
+                Daily habit check-in
+              </Text>
               <Switch
                 value={habitState.enabled}
-                onValueChange={(val) => toggleHabitReminder(val, habitState.hour, habitState.minute)}
+                onValueChange={(val) =>
+                  toggleHabitReminder(val, habitState.hour, habitState.minute)
+                }
                 disabled={isUpdating}
                 trackColor={reminderSwitchTrackColor}
                 thumbColor={reminderSwitchThumbColor}
@@ -251,9 +264,20 @@ export default function SettingsScreen() {
             {habitState.enabled && (
               <>
                 <View style={s.divider} />
-                <Pressable style={s.listRow} onPress={() => openPicker('habit')}>
-                  <Text selectable style={[s.rowLabel, { color: C.textSecondary }]}>Reminder time</Text>
-                  <Text selectable style={[s.rowValue, { color: palette.orange }]}>
+                <Pressable
+                  style={s.listRow}
+                  onPress={() => openPicker("habit")}
+                >
+                  <Text
+                    selectable
+                    style={[s.rowLabel, { color: C.textSecondary }]}
+                  >
+                    Reminder time
+                  </Text>
+                  <Text
+                    selectable
+                    style={[s.rowValue, { color: palette.orange }]}
+                  >
                     {formatTime(habitState.hour, habitState.minute)}
                   </Text>
                 </Pressable>
@@ -261,10 +285,18 @@ export default function SettingsScreen() {
             )}
             <View style={s.divider} />
             <View style={s.listRow}>
-              <Text selectable style={s.rowLabel}>Evening reset</Text>
+              <Text selectable style={s.rowLabel}>
+                Evening reset
+              </Text>
               <Switch
                 value={eveningState.enabled}
-                onValueChange={(val) => toggleEveningReminder(val, eveningState.hour, eveningState.minute)}
+                onValueChange={(val) =>
+                  toggleEveningReminder(
+                    val,
+                    eveningState.hour,
+                    eveningState.minute,
+                  )
+                }
                 disabled={isUpdating}
                 trackColor={reminderSwitchTrackColor}
                 thumbColor={reminderSwitchThumbColor}
@@ -274,9 +306,20 @@ export default function SettingsScreen() {
             {eveningState.enabled && (
               <>
                 <View style={s.divider} />
-                <Pressable style={s.listRow} onPress={() => openPicker('evening')}>
-                  <Text selectable style={[s.rowLabel, { color: C.textSecondary }]}>Reminder time</Text>
-                  <Text selectable style={[s.rowValue, { color: palette.orange }]}>
+                <Pressable
+                  style={s.listRow}
+                  onPress={() => openPicker("evening")}
+                >
+                  <Text
+                    selectable
+                    style={[s.rowLabel, { color: C.textSecondary }]}
+                  >
+                    Reminder time
+                  </Text>
+                  <Text
+                    selectable
+                    style={[s.rowValue, { color: palette.orange }]}
+                  >
                     {formatTime(eveningState.hour, eveningState.minute)}
                   </Text>
                 </Pressable>
@@ -293,11 +336,16 @@ export default function SettingsScreen() {
             <View style={s.listCard}>
               <Pressable
                 style={s.listRow}
-                onPress={() => openPicker('appLock')}
+                onPress={() => openPicker("appLock")}
                 disabled={isUpdatingAppLockTime}
               >
-                <Text selectable style={s.rowLabel}>Daily reset time</Text>
-                <Text selectable style={[s.rowValue, { color: palette.orange }]}>
+                <Text selectable style={s.rowLabel}>
+                  Daily reset time
+                </Text>
+                <Text
+                  selectable
+                  style={[s.rowValue, { color: palette.orange }]}
+                >
                   {formatTime(appLockTime.hour, appLockTime.minute)}
                 </Text>
               </Pressable>
@@ -312,10 +360,14 @@ export default function SettingsScreen() {
           <View style={s.listCard}>
             <Pressable
               style={s.actionRow}
-              onPress={() => openExternalUrl("https://apps.apple.com/account/subscriptions")}
+              onPress={() =>
+                openExternalUrl("https://apps.apple.com/account/subscriptions")
+              }
             >
               <Text selectable style={s.rowLabel}>
-                {hasActiveSubscription() ? "Manage Subscription" : "Subscribe to Pro"}
+                {hasActiveSubscription()
+                  ? "Manage Subscription"
+                  : "Subscribe to Pro"}
               </Text>
               <Text selectable style={s.chevron}>
                 ›
@@ -388,7 +440,10 @@ export default function SettingsScreen() {
             {SHOW_SCREENSHOT_DATA_ACTION ? (
               <>
                 <View style={s.divider} />
-                <Pressable style={s.actionRow} onPress={handleGenerateScreenshotData}>
+                <Pressable
+                  style={s.actionRow}
+                  onPress={handleGenerateScreenshotData}
+                >
                   <View style={s.actionTextBlock}>
                     <Text selectable style={s.rowLabel}>
                       Generate screenshot data
@@ -407,17 +462,35 @@ export default function SettingsScreen() {
         </View>
       </ScrollView>
 
-      {pickerTarget !== null && Platform.OS === 'ios' && (
-        <Modal transparent animationType="slide" visible onRequestClose={() => setPickerTarget(null)}>
+      {pickerTarget !== null && Platform.OS === "ios" && (
+        <Modal
+          transparent
+          animationType="slide"
+          visible
+          onRequestClose={() => setPickerTarget(null)}
+        >
           <View style={s.pickerOverlay}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={() => setPickerTarget(null)} />
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setPickerTarget(null)}
+            />
             <View style={s.pickerSheet}>
               <View style={s.pickerHeader}>
                 <Pressable onPress={() => setPickerTarget(null)}>
-                  <Text selectable style={[s.pickerBtn, { color: C.textSecondary }]}>Cancel</Text>
+                  <Text
+                    selectable
+                    style={[s.pickerBtn, { color: C.textSecondary }]}
+                  >
+                    Cancel
+                  </Text>
                 </Pressable>
                 <Pressable onPress={commitPicker}>
-                  <Text selectable style={[s.pickerBtn, { color: palette.orange }]}>Done</Text>
+                  <Text
+                    selectable
+                    style={[s.pickerBtn, { color: palette.orange }]}
+                  >
+                    Done
+                  </Text>
                 </Pressable>
               </View>
               <View style={s.pickerBody}>
@@ -427,7 +500,7 @@ export default function SettingsScreen() {
                   display="spinner"
                   onChange={onPickerChange}
                   textColor={C.textPrimary}
-                  style={{ width: '100%' }}
+                  style={{ width: "100%" }}
                 />
               </View>
             </View>
@@ -438,7 +511,10 @@ export default function SettingsScreen() {
   );
 }
 
-function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>, insets: { bottom: number }) {
+function makeStyles(
+  C: ReturnType<typeof import("@/hooks/useTheme").useTheme>,
+  insets: { bottom: number },
+) {
   return StyleSheet.create({
     container: { flex: 1 },
     section: { gap: 10 },
@@ -557,20 +633,20 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>, i
     },
     pickerOverlay: {
       flex: 1,
-      justifyContent: 'flex-end' as const,
-      backgroundColor: 'rgba(0,0,0,0.4)',
+      justifyContent: "flex-end" as const,
+      backgroundColor: "rgba(0,0,0,0.4)",
     },
     pickerSheet: {
       backgroundColor: C.sheetBg,
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
-      borderCurve: 'continuous' as const,
-      overflow: 'hidden' as const,
+      borderCurve: "continuous" as const,
+      overflow: "hidden" as const,
       paddingBottom: insets.bottom + 16,
     },
     pickerHeader: {
-      flexDirection: 'row' as const,
-      justifyContent: 'space-between' as const,
+      flexDirection: "row" as const,
+      justifyContent: "space-between" as const,
       paddingHorizontal: 20,
       paddingVertical: 14,
       borderBottomWidth: 1,
@@ -578,11 +654,11 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>, i
     },
     pickerBtn: {
       fontSize: 16,
-      fontWeight: '600' as const,
+      fontWeight: "600" as const,
     },
     pickerBody: {
-      alignItems: 'center' as const,
-      justifyContent: 'center' as const,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
       paddingVertical: 8,
     },
   });

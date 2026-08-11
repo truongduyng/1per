@@ -15,8 +15,8 @@ import { trackOnboardingEvent } from "@/hooks/useOnboarding";
 import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 
-const PRIVACY_URL = "https://yikudo.xyz/kadoze/privacy";
-const TERMS_URL = "https://yikudo.xyz/kadoze/terms";
+const PRIVACY_URL = "https://yikudo.xyz/1per/privacy";
+const TERMS_URL = "https://yikudo.xyz/1per/terms";
 
 const FEATURES = [
   { icon: "infinite-outline" as const, text: "Unlimited custom habits" },
