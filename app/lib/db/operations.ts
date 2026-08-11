@@ -124,7 +124,7 @@ export const completionOps = {
 };
 
 // ── challengeOps ──────────────────────────────────────────────────────────────
-// Preset challenges (e.g. "75 Hard"): a fixed-duration bundle of habits started together.
+// Preset challenges (e.g. "69 Hard"): a fixed-duration bundle of habits started together.
 export const challengeOps = {
   async getAll() {
     return await withInitializedDb(() =>

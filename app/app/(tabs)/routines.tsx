@@ -1,6 +1,5 @@
 import GradientBackground from "@/components/GradientBackground";
 import { HabitHeatmap } from "@/components/HabitHeatmap";
-import { Collapsible } from "@/components/ui/collapsible";
 import { useTheme } from "@/hooks/useTheme";
 import {
   db,
@@ -12,7 +11,6 @@ import {
   habitOps,
   challengeOps,
 } from "@/lib/db";
-import { KEYSTONE_HABITS_BY_FOCUS } from "@/hooks/useOnboarding";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import * as Haptics from "expo-haptics";
@@ -286,30 +284,10 @@ function makeModalStyles(C: ReturnType<typeof import("@/hooks/useTheme").useThem
   });
 }
 
-const FOCUS_LABELS: Record<string, string> = {
-  health: "Health & Vitality",
-  mindset: "Mindset & Growth",
-  work: "Work & Business",
-  relations: "Relationships",
-  creative: "Creativity",
-  finance: "Financial Freedom",
-};
-const FOCUS_ICONS: Record<string, React.ComponentProps<typeof Ionicons>["name"]> = {
-  health: "star-outline",
-  mindset: "person-outline",
-  work: "briefcase-outline",
-  relations: "heart-outline",
-  creative: "sparkles-outline",
-  finance: "cash-outline",
-};
 const PROGRESS_RING_SIZE = 148;
 const PROGRESS_RING_STROKE = 12;
 const PROGRESS_RING_RADIUS = (PROGRESS_RING_SIZE - PROGRESS_RING_STROKE) / 2;
 const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
-
-function habitKey(title: string, subtitle?: string | null) {
-  return `${title}::${subtitle ?? ""}`;
-}
 
 function parseDateKey(key: string): Date {
   const [year, month, day] = key.split("-").map(Number);
@@ -388,18 +366,6 @@ export default function RoutinesScreen() {
     () => [...specialCompletions, ...(allCompletions ?? [])],
     [specialCompletions, allCompletions],
   );
-
-  const focusEntries = useMemo(
-    () => Object.entries(KEYSTONE_HABITS_BY_FOCUS),
-    [],
-  );
-  const existingHabitMap = useMemo(() => {
-    const map = new Map<string, NonNullable<typeof allHabits>[number]>();
-    for (const habit of allHabits ?? []) {
-      map.set(habitKey(habit.title, habit.subtitle), habit);
-    }
-    return map;
-  }, [allHabits]);
 
   const todayHabits = useMemo(() => {
     const list = allHabits ?? [];
@@ -747,7 +713,7 @@ export default function RoutinesScreen() {
           ) : (
             <Pressable style={s.emptyChallengeCard} onPress={() => router.push("/challenges")}>
               <Ionicons name="flag-outline" size={18} color={C.iconSecondary} />
-              <Text style={s.emptyChallengeText}>Try a preset challenge like 75 Hard</Text>
+              <Text style={s.emptyChallengeText}>Try a preset challenge like 69 Hard</Text>
               <Ionicons name="chevron-forward" size={16} color={C.textQuaternary} />
             </Pressable>
           )}
@@ -838,54 +804,6 @@ export default function RoutinesScreen() {
               })}
             </View>
           )}
-        </View>
-
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>SUGGESTIONS</Text>
-          <View style={s.focusGroupsList}>
-            {focusEntries.map(([focusKey, focusHabits]) => (
-              <View key={focusKey} style={s.focusGroupCard}>
-                <Collapsible
-                  title={FOCUS_LABELS[focusKey] ?? focusKey}
-                  headerContent={
-                    <View style={s.focusGroupHeaderContent}>
-                      <View style={s.focusGroupHeaderIconWrap}>
-                        <Ionicons
-                          name={FOCUS_ICONS[focusKey] ?? "ellipse-outline"}
-                          size={20}
-                          color={C.iconSecondary}
-                        />
-                      </View>
-                      <Text style={s.focusGroupTitle}>{FOCUS_LABELS[focusKey] ?? focusKey}</Text>
-                    </View>
-                  }
-                  contentStyle={s.focusGroupContent}
-                >
-                  <View style={s.focusGroupItems}>
-                    {focusHabits.map((habit) => {
-                      const isOwned = existingHabitMap.has(habitKey(habit.title, habit.subtitle));
-                      return (
-                        <View key={`${focusKey}-${habit.title}`} style={s.focusGroupItem}>
-                          <Ionicons
-                            name={resolveIoniconName(habit.icon, "star-outline")}
-                            size={16}
-                            color={C.iconSecondary}
-                            style={s.focusGroupIcon}
-                          />
-                          <Text style={s.focusGroupItemText} numberOfLines={1}>
-                            {habit.title}
-                          </Text>
-                          {isOwned && (
-                            <Ionicons name="checkmark-circle" size={14} color={C.accentText} />
-                          )}
-                        </View>
-                      );
-                    })}
-                  </View>
-                </Collapsible>
-              </View>
-            ))}
-          </View>
         </View>
       </ScrollView>
 

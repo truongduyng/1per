@@ -18,10 +18,10 @@ export interface PresetChallenge {
 export const PRESET_CHALLENGES: PresetChallenge[] = [
   {
     id: "75-hard",
-    title: "75 Hard",
-    subtitle: "No compromises. 75 days, five daily non-negotiables.",
+    title: "69 Hard",
+    subtitle: "No compromises. 69 days, five daily non-negotiables.",
     icon: "flame-outline",
-    durationDays: 75,
+    durationDays: 69,
     rules: [
       { title: "Follow your diet", subtitle: "No cheat meals, no alcohol", icon: "nutrition-outline" },
       { title: "Workout #1", subtitle: "45 minutes", icon: "barbell-outline" },
@@ -33,10 +33,10 @@ export const PRESET_CHALLENGES: PresetChallenge[] = [
   },
   {
     id: "75-soft",
-    title: "75 Soft",
-    subtitle: "A sustainable version. 75 days, room to breathe.",
+    title: "69 Soft",
+    subtitle: "A sustainable version. 69 days, room to breathe.",
     icon: "leaf-outline",
-    durationDays: 75,
+    durationDays: 69,
     rules: [
       { title: "Eat with intention", subtitle: "One planned treat a week is fine", icon: "nutrition-outline" },
       { title: "Workout", subtitle: "45 minutes, one rest day a week", icon: "barbell-outline" },

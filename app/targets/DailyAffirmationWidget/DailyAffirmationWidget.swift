@@ -34,8 +34,12 @@ struct DailyAffirmationProvider: TimelineProvider {
   }
 
   private func readEntry() -> DailyAffirmationEntry {
+    // ExtensionStorage.set() JSON-encodes objects and stores them as Data,
+    // so read the raw Data and decode rather than using dictionary(forKey:).
     let defaults = UserDefaults(suiteName: appGroup)
-    let payload = defaults?.dictionary(forKey: storageKey)
+    let payload = defaults?.data(forKey: storageKey).flatMap {
+      try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
+    } ?? nil
     let affirmation = payload?["text"] as? String
     let dayLabel = payload?["dayLabel"] as? String
 

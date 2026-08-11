@@ -743,6 +743,13 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
     focusIconWrapActive: {
       backgroundColor: "rgba(255,122,26,0.15)",
     },
+    focusIcon: {
+      width: 44,
+      height: 44,
+    },
+    focusIconInactive: {
+      opacity: 0.68,
+    },
     focusLabel: {
       color: palette.white70,
       fontSize: 14,

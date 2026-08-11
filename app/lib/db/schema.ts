@@ -13,7 +13,7 @@ export const profiles = sqliteTable('profiles', {
 });
 
 // ── challenges ───────────────────────────────────────────────────────────────
-// A bundled, fixed-duration set of daily rules (e.g. "75 Hard") started from a preset.
+// A bundled, fixed-duration set of daily rules (e.g. "69 Hard") started from a preset.
 export const challenges = sqliteTable('challenges', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   presetId: text('preset_id').notNull(),
