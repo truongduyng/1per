@@ -12,12 +12,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import GradientBackground from "@/components/GradientBackground";
 import {
   AppTourScreen,
+  ChallengeSuggestionScreen,
   FastWinsScreen,
   FocusAreaScreen,
   FutureScreen,
   HookScreen,
   IdentityScreen,
-  KeystoneScreen,
   PAIN_POINT_SET,
   PainAmplifyScreen,
   PainScreen,
@@ -34,7 +34,6 @@ import {
   TOTAL,
   trackOnboardingEvent,
   useOnboarding,
-  type KeystoneHabit,
 } from "@/hooks/useOnboarding";
 
 export default function OnboardingScreen() {
@@ -46,10 +45,8 @@ export default function OnboardingScreen() {
     setFocusAreas,
     painPoints,
     setPainPoints,
-    keystoneHabit,
-    setKeystoneHabit,
-    customHabitTitle,
-    setCustomHabitTitle,
+    selectedChallengeId,
+    setSelectedChallengeId,
     referralSource,
     setReferralSource,
     name,
@@ -93,12 +90,6 @@ export default function OnboardingScreen() {
       }
       return next;
     });
-  };
-
-  const selectHabit = (habit: KeystoneHabit) => {
-    setKeystoneHabit(habit.id);
-    trackOnboardingEvent("habit_selected", { habit: habit.id });
-    void Haptics.selectionAsync();
   };
 
   const selectReferralSource = (source: string) => {
@@ -147,15 +138,17 @@ export default function OnboardingScreen() {
         return <FastWinsScreen onNext={advance} />;
       case "app-tour":
         return <AppTourScreen onNext={advance} />;
-      case "keystone":
+      case "challenge":
         return (
-          <KeystoneScreen
-            selected={keystoneHabit}
-            onSelect={selectHabit}
+          <ChallengeSuggestionScreen
+            focusAreas={focusAreas}
+            selected={selectedChallengeId}
+            onSelect={(challengeId) => {
+              setSelectedChallengeId(challengeId);
+              trackOnboardingEvent("challenge_selected", { challenge: challengeId || null });
+              void Haptics.selectionAsync();
+            }}
             onNext={advance}
-            painPoints={painPoints}
-            customHabitTitle={customHabitTitle}
-            onCustomHabitTitleChange={setCustomHabitTitle}
           />
         );
       case "notification":

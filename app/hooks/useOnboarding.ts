@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing } from "react-native";
 import { router } from "expo-router";
-import { profileOps, habitOps, dailyFocusOps } from "@/lib/db";
+import { profileOps, dailyFocusOps, challengeOps } from "@/lib/db";
 import { submitOnboarding } from "@/lib/backend";
 import { storage } from "@/lib/storage";
 import { GAME_AVATARS, type GameAvatarId } from "@/lib/avatarCatalog";
 import type { IoniconName } from "@/lib/iconNames";
+import { PRESET_CHALLENGES } from "@/lib/presetChallenges";
 
 // ---------------------------------------------------------------------------
 // Step definitions
@@ -20,7 +21,7 @@ export type StepType =
   | "future"
   | "identity"
   | "wins"
-  | "keystone"
+  | "challenge"
   | "app-tour"
   | "notification"
   | "screentime"
@@ -40,7 +41,7 @@ export const STEPS: StepConfig[] = [
   { type: "future" },
   { type: "identity" },
   { type: "wins" },
-  { type: "keystone" },
+  { type: "challenge" },
   { type: "app-tour" },
   { type: "notification" },
   { type: "screentime" },
@@ -59,8 +60,7 @@ interface OnboardingDraft {
   focusAreas: string[];
   painPoints: string[];
   mainGoal: string;
-  keystoneHabit: string;
-  customHabitTitle: string;
+  selectedChallengeId: string;
   referralSource: string;
   name: string;
   avatar: GameAvatarId;
@@ -73,8 +73,7 @@ const DEFAULT_ONBOARDING_DRAFT: OnboardingDraft = {
   focusAreas: [],
   painPoints: [],
   mainGoal: "",
-  keystoneHabit: "",
-  customHabitTitle: "",
+  selectedChallengeId: "",
   referralSource: "",
   name: "",
   avatar: GAME_AVATARS[0].id,
@@ -97,8 +96,7 @@ function readOnboardingDraft(): OnboardingDraft {
       focusAreas: Array.isArray(draft.focusAreas) ? draft.focusAreas.slice(0, 1) : [],
       painPoints: Array.isArray(draft.painPoints) ? draft.painPoints.slice(0, 1) : [],
       mainGoal: draft.mainGoal ?? "",
-      keystoneHabit: draft.keystoneHabit ?? "",
-      customHabitTitle: draft.customHabitTitle ?? "",
+      selectedChallengeId: draft.selectedChallengeId ?? "",
       referralSource: draft.referralSource ?? "",
       name: draft.name ?? "",
       avatar: GAME_AVATARS.some((item) => item.id === draft.avatar)
@@ -392,10 +390,9 @@ export function useOnboarding() {
   const [focusAreas, setFocusAreas] = useState<string[]>(initialDraft.focusAreas);
   const [painPoints, setPainPoints] = useState<string[]>(initialDraft.painPoints);
   const [mainGoal, setMainGoal] = useState(initialDraft.mainGoal);
-  const [keystoneHabit, setKeystoneHabit] = useState<string>(
-    initialDraft.keystoneHabit,
+  const [selectedChallengeId, setSelectedChallengeId] = useState(
+    initialDraft.selectedChallengeId,
   );
-  const [customHabitTitle, setCustomHabitTitle] = useState(initialDraft.customHabitTitle);
   const [referralSource, setReferralSource] = useState(initialDraft.referralSource);
   const [name, setName] = useState(initialDraft.name);
   const [avatar, setAvatar] = useState<GameAvatarId>(initialDraft.avatar);
@@ -408,14 +405,13 @@ export function useOnboarding() {
       focusAreas,
       painPoints,
       mainGoal,
-      keystoneHabit,
-      customHabitTitle,
+      selectedChallengeId,
       referralSource,
       name,
       avatar,
     };
     storage.set(ONBOARDING_DRAFT_KEY, JSON.stringify(draft));
-  }, [avatar, coreProblem, currentStep, customHabitTitle, focusAreas, keystoneHabit, mainGoal, name, painPoints, referralSource]);
+  }, [avatar, coreProblem, currentStep, focusAreas, mainGoal, name, painPoints, referralSource, selectedChallengeId]);
 
   useEffect(() => {
     trackOnboardingEvent("onboarding_started");
@@ -473,17 +469,15 @@ export function useOnboarding() {
         await dailyFocusOps.upsertGoal(mainGoal);
       }
 
-      // Save keystone habit
-      const selected = KEYSTONE_HABITS.find((h) => h.id === keystoneHabit);
-      const isCustom = keystoneHabit === "custom";
-      await habitOps.create({
-        title: isCustom ? (customHabitTitle.trim() || "My habit") : (selected?.title ?? "10-minute walk"),
-        subtitle: isCustom ? undefined : selected?.subtitle,
-        icon: isCustom ? "star-outline" : selected?.icon,
-        daysOfWeek: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
-        isLocked: false,
-        sortOrder: 0,
-      });
+      const selectedChallenge = PRESET_CHALLENGES.find(
+        (preset) => preset.id === selectedChallengeId,
+      );
+      if (selectedChallenge) {
+        await challengeOps.start(selectedChallenge);
+        trackOnboardingEvent("onboarding_challenge_started", {
+          challenge: selectedChallenge.id,
+        });
+      }
 
       try {
         await submitOnboarding({
@@ -492,7 +486,7 @@ export function useOnboarding() {
           avatar,
           painPoints,
           mainGoal,
-          keystoneHabit,
+          keystoneHabit: "",
           referralSource,
           completedAt: new Date().toISOString(),
         });
@@ -507,7 +501,7 @@ export function useOnboarding() {
     storage.remove(ONBOARDING_DRAFT_KEY);
     trackOnboardingEvent("onboarding_completed");
     router.replace("/(tabs)");
-  }, [avatar, customHabitTitle, keystoneHabit, mainGoal, name, painPoints, referralSource]);
+  }, [avatar, mainGoal, name, painPoints, referralSource, selectedChallengeId]);
 
   const showBack = currentStep > 0;
 
@@ -522,10 +516,8 @@ export function useOnboarding() {
     setPainPoints,
     mainGoal,
     setMainGoal,
-    keystoneHabit,
-    setKeystoneHabit,
-    customHabitTitle,
-    setCustomHabitTitle,
+    selectedChallengeId,
+    setSelectedChallengeId,
     referralSource,
     setReferralSource,
     name,

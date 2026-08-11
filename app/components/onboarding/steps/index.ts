@@ -8,5 +8,5 @@ export { IdentityScreen } from "./IdentityScreen";
 export { FastWinsScreen } from "./FastWinsScreen";
 export { TrustScreen } from "./TrustScreen";
 export { GoalInputScreen } from "./GoalInputScreen";
-export { KeystoneScreen, CUSTOM_HABIT_ID } from "./KeystoneScreen";
 export { AppTourScreen } from "./AppTourScreen";
+export { ChallengeSuggestionScreen } from "./ChallengeSuggestionScreen";

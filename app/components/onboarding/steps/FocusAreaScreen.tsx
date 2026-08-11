@@ -47,7 +47,7 @@ export function FocusAreaScreen({
               onPress={() => onToggle(key)}
               style={[s.focusCard, active && s.focusCardActive]}
             >
-              <View style={[s.focusIconWrap, active && s.focusIconWrapActive]}>
+              <View style={s.focusIconWrap}>
                 <Image
                   source={FOCUS_ICONS[key]}
                   style={[s.focusIcon, !active && s.focusIconInactive]}
