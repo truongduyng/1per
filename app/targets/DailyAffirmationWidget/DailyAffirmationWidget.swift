@@ -69,10 +69,10 @@ struct DailyAffirmationWidgetView: View {
       }
 
       Text(entry.affirmation)
-        .font(.system(size: family == .systemSmall ? 16 : 22, weight: .heavy, design: .rounded))
+        .font(.system(size: family == .systemSmall ? 14 : 22, weight: family == .systemSmall ? .semibold : .heavy, design: .rounded))
         .foregroundStyle(Color("affirmationInk"))
-        .lineLimit(family == .systemSmall ? 4 : 3)
-        .minimumScaleFactor(0.82)
+        .lineLimit(family == .systemSmall ? 6 : 3)
+        .minimumScaleFactor(0.6)
         .multilineTextAlignment(.leading)
         .fixedSize(horizontal: false, vertical: true)
         .layoutPriority(1)
