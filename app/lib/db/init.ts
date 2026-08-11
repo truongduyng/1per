@@ -5,7 +5,7 @@ let initializationPromise: Promise<void> | null = null;
 
 export async function resetDatabase() {
   try {
-    const tables = ['habit_completions', 'habits', 'daily_focus', 'daily_affirmations', 'profiles'];
+    const tables = ['habit_completions', 'habits', 'challenges', 'daily_focus', 'daily_affirmations', 'profiles'];
     for (const table of tables) {
       await expoDb.execAsync(`DROP TABLE IF EXISTS ${table};`);
     }
@@ -55,6 +55,30 @@ export async function initializeDatabase() {
         created_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
     `);
+
+    expoDb.execSync(`
+      CREATE TABLE IF NOT EXISTS challenges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        preset_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        subtitle TEXT,
+        icon TEXT,
+        duration_days INTEGER NOT NULL,
+        start_date TEXT NOT NULL,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+    `);
+
+    const habitColumns = expoDb.getAllSync<{ name: string }>(
+      `PRAGMA table_info(habits);`
+    );
+    const hasChallengeId = habitColumns.some((column) => column.name === 'challenge_id');
+    if (!hasChallengeId) {
+      expoDb.execSync(`
+        ALTER TABLE habits
+        ADD COLUMN challenge_id INTEGER REFERENCES challenges(id);
+      `);
+    }
 
     expoDb.execSync(`
       CREATE TABLE IF NOT EXISTS habit_completions (
