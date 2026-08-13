@@ -52,8 +52,8 @@ export default function NotificationStep({ onNext }: NotificationStepProps) {
 
         <View>
           <Text style={s.headline}>
-            Stay on track,{"\n"}
-            <Text style={s.highlight}>without</Text> the noise.
+            Stay on track{" "}
+            <Text style={s.highlight}>without</Text> the noise
           </Text>
           <Text style={s.body}>
             Enable notifications to get gentle reminders, daily focus nudges,

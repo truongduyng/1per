@@ -3,6 +3,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { challengeOps, challenges, db } from "@/lib/db";
 import { PRESET_CHALLENGES, type PresetChallenge } from "@/lib/presetChallenges";
 import { Ionicons } from "@expo/vector-icons";
+import { isNull } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import * as Haptics from "expo-haptics";
 import { router, Stack } from "expo-router";
@@ -15,7 +16,9 @@ export default function ChallengesScreen() {
   const C = useTheme();
   const [startingId, setStartingId] = useState<string | null>(null);
 
-  const { data: activeChallenges } = useLiveQuery(db.select().from(challenges));
+  const { data: activeChallenges } = useLiveQuery(
+    db.select().from(challenges).where(isNull(challenges.archivedAt)),
+  );
   const activePresetIds = useMemo(
     () => new Set((activeChallenges ?? []).map((c) => c.presetId)),
     [activeChallenges],

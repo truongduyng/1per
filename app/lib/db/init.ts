@@ -52,6 +52,7 @@ export async function initializeDatabase() {
         days_of_week TEXT NOT NULL DEFAULT '[]',
         is_locked INTEGER NOT NULL DEFAULT 0,
         sort_order INTEGER NOT NULL DEFAULT 0,
+        archived_at INTEGER,
         created_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
     `);
@@ -65,6 +66,7 @@ export async function initializeDatabase() {
         icon TEXT,
         duration_days INTEGER NOT NULL,
         start_date TEXT NOT NULL,
+        archived_at INTEGER,
         created_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
     `);
@@ -77,6 +79,27 @@ export async function initializeDatabase() {
       expoDb.execSync(`
         ALTER TABLE habits
         ADD COLUMN challenge_id INTEGER REFERENCES challenges(id);
+      `);
+    }
+
+    const hasHabitArchivedAt = habitColumns.some((column) => column.name === 'archived_at');
+    if (!hasHabitArchivedAt) {
+      expoDb.execSync(`
+        ALTER TABLE habits
+        ADD COLUMN archived_at INTEGER;
+      `);
+    }
+
+    const challengeColumns = expoDb.getAllSync<{ name: string }>(
+      `PRAGMA table_info(challenges);`
+    );
+    const hasChallengeArchivedAt = challengeColumns.some(
+      (column) => column.name === 'archived_at'
+    );
+    if (!hasChallengeArchivedAt) {
+      expoDb.execSync(`
+        ALTER TABLE challenges
+        ADD COLUMN archived_at INTEGER;
       `);
     }
 

@@ -16,7 +16,7 @@ import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { desc } from "drizzle-orm";
+import { desc, isNull } from "drizzle-orm";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -73,7 +73,9 @@ export default function HomeScreen() {
   const [dailyAffirmation, setDailyAffirmation] =
     useState<DailyAffirmation | null>(null);
 
-  const { data: allHabits } = useLiveQuery(db.select().from(habits));
+  const { data: allHabits } = useLiveQuery(
+    db.select().from(habits).where(isNull(habits.archivedAt)),
+  );
   const { data: allCompletions } = useLiveQuery(
     db.select().from(habitCompletions),
   );

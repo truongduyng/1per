@@ -115,7 +115,12 @@ export default function ProfileScreen() {
 
   const analytics = useMemo(() => {
     const completions = allCompletions ?? [];
+    // Archived habits (removed by the user, or part of a quit challenge) are kept
+    // here on purpose: their check-ins are real history and stay in every
+    // lifetime/trend stat. Only "what am I tracking right now" figures use
+    // activeHabits.
     const habitsData = allHabits ?? [];
+    const activeHabits = habitsData.filter((habit) => !habit.archivedAt);
     const focusData = allFocusRows ?? [];
 
     const doneCompletions = completions.filter(
@@ -164,7 +169,7 @@ export default function ProfileScreen() {
 
     const todayName = DAY_NAMES[today.getDay()];
     const activeToday =
-      habitsData.filter((habit) =>
+      activeHabits.filter((habit) =>
         (habit.daysOfWeek as string[]).includes(todayName),
       ).length + 2;
 
@@ -312,6 +317,7 @@ export default function ProfileScreen() {
           streak,
           rate,
           done: done.length,
+          archived: Boolean(habit.archivedAt),
         };
       })
       .sort((a, b) => {
@@ -320,6 +326,8 @@ export default function ProfileScreen() {
         return b.done - a.done;
       });
 
+    // Streaks run up to today, so an archived habit can only score 0 here — the
+    // max is effectively over active habits either way.
     const longestHabitStreak = perHabit.length
       ? Math.max(...perHabit.map((item) => item.streak))
       : 0;
@@ -329,7 +337,8 @@ export default function ProfileScreen() {
       totalDone,
       activeToday,
       completionRate,
-      habitsCount: habitsData.length + 2,
+      habitsCount: activeHabits.length + 2,
+      habitsEverCount: habitsData.length + 2,
       weekActivity,
       bestDayCount,
       consistencyGrid,
@@ -341,7 +350,8 @@ export default function ProfileScreen() {
       focusPeak,
       momentumScore,
       identityTitle: getIdentityTitle(momentumScore),
-      topHabits: perHabit.slice(0, 3),
+      topHabits: perHabit.filter((item) => !item.archived).slice(0, 3),
+      allTimeHabits: perHabit,
       longestHabitStreak,
     };
   }, [allCompletions, allFocusRows, allHabits, today]);

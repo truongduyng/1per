@@ -22,6 +22,7 @@ export const challenges = sqliteTable('challenges', {
   icon: text('icon'),                            // Ionicon name
   durationDays: integer('duration_days').notNull(),
   startDate: text('start_date').notNull(),       // 'YYYY-MM-DD'
+  archivedAt: integer('archived_at', { mode: 'timestamp' }), // soft delete: quit/finished, kept so archived habits keep their link
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
@@ -36,6 +37,7 @@ export const habits = sqliteTable('habits', {
   isLocked: integer('is_locked', { mode: 'boolean' }).notNull().default(false),
   sortOrder: integer('sort_order').notNull().default(0),
   challengeId: integer('challenge_id').references(() => challenges.id), // set when created as part of a preset challenge
+  archivedAt: integer('archived_at', { mode: 'timestamp' }), // soft delete: hidden from active lists, completions kept for stats
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 

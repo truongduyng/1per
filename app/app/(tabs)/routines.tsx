@@ -12,6 +12,7 @@ import {
   challengeOps,
 } from "@/lib/db";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
+import { isNull } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import * as Haptics from "expo-haptics";
 import { Ionicons } from "@expo/vector-icons";
@@ -307,10 +308,14 @@ export default function RoutinesScreen() {
   const [expandedHabitId, setExpandedHabitId] = useState<number | null>(null);
   const [addModalVisible, setAddModalVisible] = useState(false);
 
-  const { data: allHabits } = useLiveQuery(db.select().from(habits));
+  const { data: allHabits } = useLiveQuery(
+    db.select().from(habits).where(isNull(habits.archivedAt)),
+  );
   const { data: allCompletions } = useLiveQuery(db.select().from(habitCompletions));
   const { data: allFocusRows } = useLiveQuery(db.select().from(dailyFocus));
-  const { data: activeChallenges } = useLiveQuery(db.select().from(challenges));
+  const { data: activeChallenges } = useLiveQuery(
+    db.select().from(challenges).where(isNull(challenges.archivedAt)),
+  );
 
   const specialHabits = useMemo(() => {
     const rows = allFocusRows ?? [];
@@ -497,16 +502,47 @@ export default function RoutinesScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
-  const endChallenge = (id: number, title: string) => {
+  const removeHabit = (id: number, title: string, challengeId: number | null) => {
+    if (challengeId != null) {
+      Alert.alert(
+        `"${title}" belongs to a challenge`,
+        "Quit the challenge to remove its habits.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
     Alert.alert(
-      `End "${title}"?`,
-      "Its habits will stay in Active Habits — only the challenge countdown ends.",
+      `Remove "${title}"?`,
+      "It disappears from your daily list. Past check-ins are kept in your stats.",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "End Challenge",
+          text: "Remove",
           style: "destructive",
-          onPress: () => challengeOps.end(id),
+          onPress: async () => {
+            await habitOps.delete(id);
+            setExpandedHabitId(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
+        },
+      ],
+    );
+  };
+
+  const endChallenge = (id: number, title: string) => {
+    const habitCount = (allHabits ?? []).filter((h) => h.challengeId === id).length;
+    Alert.alert(
+      `Quit "${title}"?`,
+      `Its ${habitCount} habit${habitCount === 1 ? "" : "s"} will be removed from your daily list. Past check-ins are kept in your stats.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Quit Challenge",
+          style: "destructive",
+          onPress: async () => {
+            await challengeOps.end(id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
         },
       ],
     );
@@ -698,7 +734,7 @@ export default function RoutinesScreen() {
                         onPress={() => endChallenge(challenge.id, challenge.title)}
                         hitSlop={12}
                         accessibilityRole="button"
-                        accessibilityLabel="End challenge"
+                        accessibilityLabel="Quit challenge"
                       >
                         <Ionicons name="close-circle-outline" size={20} color={C.textQuaternary} />
                       </Pressable>
@@ -789,15 +825,26 @@ export default function RoutinesScreen() {
                       </Pressable>
                     </Pressable>
                     {isExpanded && (
-                      <HabitHeatmap
-                        habitId={habit.id}
-                        daysOfWeek={habit.daysOfWeek as string[]}
-                        completions={allCompletions ?? []}
-                        today={today}
-                        createdAt={habit.createdAt}
-                        bestStreak={bestStreakMap[habit.id] ?? 0}
-                        totalDone={totalDoneMap[habit.id] ?? 0}
-                      />
+                      <>
+                        <HabitHeatmap
+                          habitId={habit.id}
+                          daysOfWeek={habit.daysOfWeek as string[]}
+                          completions={allCompletions ?? []}
+                          today={today}
+                          createdAt={habit.createdAt}
+                          bestStreak={bestStreakMap[habit.id] ?? 0}
+                          totalDone={totalDoneMap[habit.id] ?? 0}
+                        />
+                        <Pressable
+                          style={s.removeHabitBtn}
+                          onPress={() => removeHabit(habit.id, habit.title, habit.challengeId)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove ${habit.title}`}
+                        >
+                          <Ionicons name="trash-outline" size={14} color={C.textQuaternary} />
+                          <Text style={s.removeHabitBtnText}>Remove habit</Text>
+                        </Pressable>
+                      </>
                     )}
                   </View>
                 );
@@ -1016,6 +1063,19 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       justifyContent: "center",
       marginLeft: 4,
       marginRight: -6,
+    },
+    removeHabitBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 10,
+      marginTop: 4,
+    },
+    removeHabitBtnText: {
+      fontSize: 13,
+      fontWeight: "600",
+      color: C.textQuaternary,
     },
     focusHeader: {
       flexDirection: "row",

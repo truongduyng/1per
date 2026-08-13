@@ -1,4 +1,4 @@
-import { eq, desc, asc, count, and } from 'drizzle-orm';
+import { eq, desc, asc, count, and, isNull, isNotNull } from 'drizzle-orm';
 import {
   db,
   profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, challenges,
@@ -40,9 +40,26 @@ export const habitOps = {
   async create(data: NewHabit) {
     return await withInitializedDb(() => db.insert(habits).values(data).returning());
   },
+  // Active habits only — what the user is tracking right now.
   async getAll() {
     return await withInitializedDb(() =>
+      db.select().from(habits)
+        .where(isNull(habits.archivedAt))
+        .orderBy(asc(habits.sortOrder), asc(habits.createdAt))
+    );
+  },
+  // Every habit ever created, archived included. Use for analytics and for
+  // resolving titles of past completions.
+  async getAllIncludingArchived() {
+    return await withInitializedDb(() =>
       db.select().from(habits).orderBy(asc(habits.sortOrder), asc(habits.createdAt))
+    );
+  },
+  async getArchived() {
+    return await withInitializedDb(() =>
+      db.select().from(habits)
+        .where(isNotNull(habits.archivedAt))
+        .orderBy(desc(habits.archivedAt))
     );
   },
   async update(id: number, data: Partial<NewHabit>) {
@@ -50,8 +67,17 @@ export const habitOps = {
       db.update(habits).set(data).where(eq(habits.id, id)).returning()
     );
   },
+  // Soft delete: the habit disappears from active lists but its completions stay
+  // available for profile stats and history.
   async delete(id: number) {
-    return await withInitializedDb(() => db.delete(habits).where(eq(habits.id, id)));
+    return await withInitializedDb(() =>
+      db.update(habits).set({ archivedAt: new Date() }).where(eq(habits.id, id))
+    );
+  },
+  async restore(id: number) {
+    return await withInitializedDb(() =>
+      db.update(habits).set({ archivedAt: null }).where(eq(habits.id, id))
+    );
   },
   async deleteAll() {
     return await withInitializedDb(() => db.delete(habits));
@@ -128,6 +154,16 @@ export const completionOps = {
 export const challengeOps = {
   async getAll() {
     return await withInitializedDb(() =>
+      db.select().from(challenges)
+        .where(isNull(challenges.archivedAt))
+        .orderBy(desc(challenges.createdAt))
+    );
+  },
+
+  // Includes quit/finished challenges — their habits and check-ins are still
+  // part of the user's history.
+  async getAllIncludingArchived() {
+    return await withInitializedDb(() =>
       db.select().from(challenges).orderBy(desc(challenges.createdAt))
     );
   },
@@ -144,7 +180,8 @@ export const challengeOps = {
         startDate,
       }).returning();
 
-      const existingHabits = await db.select({ id: habits.id }).from(habits);
+      const existingHabits = await db.select({ id: habits.id }).from(habits)
+        .where(isNull(habits.archivedAt));
       const baseSortOrder = existingHabits.length;
 
       const newHabits = await db.insert(habits).values(
@@ -163,11 +200,15 @@ export const challengeOps = {
     });
   },
 
-  // Ends the challenge countdown but keeps its habits as regular ongoing habits.
+  // Quitting a challenge archives it together with the habits it created. Nothing is
+  // hard-deleted, so past check-ins still count towards profile stats.
   async end(id: number) {
     return await withInitializedDb(async () => {
-      await db.update(habits).set({ challengeId: null }).where(eq(habits.challengeId, id));
-      await db.delete(challenges).where(eq(challenges.id, id));
+      const archivedAt = new Date();
+      await db.update(habits).set({ archivedAt }).where(
+        and(eq(habits.challengeId, id), isNull(habits.archivedAt))
+      );
+      await db.update(challenges).set({ archivedAt }).where(eq(challenges.id, id));
     });
   },
 

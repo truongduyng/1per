@@ -73,6 +73,8 @@ export default function EveningResetScreen() {
   const { data: focusRows } = useLiveQuery(
     db.select().from(dailyFocus).orderBy(desc(dailyFocus.date)).limit(14)
   );
+  // Archived habits are included: today's check-ins may belong to a habit the
+  // user removed earlier today, and the reflection still needs its title.
   const { data: habitRows } = useLiveQuery(db.select().from(habits));
   const { data: completionRows } = useLiveQuery(db.select().from(habitCompletions));
   usePreventScreenSleep(isRunning && remainingSeconds > 0, "kadoze-evening-reset");

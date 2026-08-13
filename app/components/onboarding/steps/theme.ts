@@ -116,6 +116,11 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       shadowOpacity: 0.44,
       shadowRadius: 46,
     },
+    heroIllustration: {
+      width: "100%",
+      height: "100%",
+      transform: [{ scale: 1.04 }],
+    },
     heroCloudOne: {
       position: "absolute",
       top: 78,
