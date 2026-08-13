@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Linking,
   ScrollView,
   StyleSheet,
@@ -159,6 +160,12 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
       contentContainerStyle={s.container}
       showsVerticalScrollIndicator={false}
     >
+      <Image
+        source={require("@/assets/images/onboarding/paywall-hero.png")}
+        style={s.heroImage}
+        resizeMode="contain"
+        accessibilityLabel="A shield protecting lasting momentum"
+      />
       <View style={s.header}>
         <Text style={s.headline}>Protect your momentum</Text>
         <Text style={s.sub}>
@@ -335,6 +342,11 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       gap: 14,
     },
     header: { gap: 6, paddingTop: 4 },
+    heroImage: {
+      width: "100%",
+      height: 150,
+      marginBottom: -4,
+    },
     proBadge: {
       alignSelf: "flex-start",
       backgroundColor: palette.orange,

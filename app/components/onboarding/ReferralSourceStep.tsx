@@ -1,8 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
@@ -43,34 +42,12 @@ export default function ReferralSourceStep({
         showsVerticalScrollIndicator={false}
       >
         <View style={s.hero}>
-          <View style={[s.socialBubble, s.instagramBubble]}>
-            <Ionicons name="logo-instagram" size={20} color="#FF5A8A" />
-          </View>
-          <View style={[s.socialBubble, s.tiktokBubble]}>
-            <Ionicons name="logo-tiktok" size={20} color="#F4F7FB" />
-          </View>
-          <View style={[s.socialBubble, s.youtubeBubble]}>
-            <Ionicons name="logo-youtube" size={20} color="#FF3B30" />
-          </View>
-          <View style={[s.socialBubble, s.searchBubble]}>
-            <Ionicons name="search-outline" size={20} color={palette.orange} />
-          </View>
-          <Svg width={118} height={88} viewBox="0 0 160 118" style={s.plane}>
-            <Path
-              d="M16 45L141 6L104 111L76 69L45 91L55 61L16 45Z"
-              fill="none"
-              stroke={palette.orange}
-              strokeWidth={4}
-              strokeLinejoin="round"
-            />
-            <Path
-              d="M55 61L141 6L76 69"
-              fill="none"
-              stroke={palette.orange}
-              strokeWidth={4}
-              strokeLinejoin="round"
-            />
-          </Svg>
+          <Image
+            source={require("@/assets/images/onboarding/referral-hero.png")}
+            style={s.heroImage}
+            resizeMode="contain"
+            accessibilityLabel="A paper plane discovering 1Per through different paths"
+          />
         </View>
 
         <View style={s.header}>
@@ -135,6 +112,10 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 2,
+    },
+    heroImage: {
+      width: "100%",
+      height: "100%",
     },
     plane: {
       transform: [{ rotate: "-8deg" }],

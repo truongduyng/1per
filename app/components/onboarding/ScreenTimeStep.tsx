@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text, TouchableOpacity, View, StyleSheet } from "react-native";
+import { Image, Text, TouchableOpacity, View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
@@ -84,9 +84,12 @@ export default function ScreenTimeStep({ onNext }: ScreenTimeStepProps) {
     <View style={s.container}>
       <View style={s.content}>
         <View style={s.iconWrap}>
-          <View style={s.iconCircle}>
-            <Ionicons name="lock-closed-outline" size={44} color={palette.orange} />
-          </View>
+          <Image
+            source={require("@/assets/images/onboarding/screentime-hero.png")}
+            style={s.heroImage}
+            resizeMode="contain"
+            accessibilityLabel="A phone protected by a focus shield"
+          />
         </View>
 
         <View>
@@ -172,6 +175,10 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     },
     iconWrap: {
       alignItems: "center",
+    },
+    heroImage: {
+      width: 132,
+      height: 132,
     },
     iconCircle: {
       width: 96,

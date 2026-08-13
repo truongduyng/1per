@@ -2,6 +2,7 @@ import React from "react";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
 } from "react-native";
@@ -45,9 +46,12 @@ export default function NotificationStep({ onNext }: NotificationStepProps) {
     <View style={s.container}>
       <View style={s.content}>
         <View style={s.iconWrap}>
-          <View style={s.iconCircle}>
-            <Ionicons name="notifications-outline" size={44} color={palette.orange} />
-          </View>
+          <Image
+            source={require("@/assets/images/onboarding/notification-hero.png")}
+            style={s.heroImage}
+            resizeMode="contain"
+            accessibilityLabel="A gentle reminder bell with morning and evening symbols"
+          />
         </View>
 
         <View>
@@ -107,6 +111,10 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     },
     iconWrap: {
       alignItems: "center",
+    },
+    heroImage: {
+      width: 132,
+      height: 132,
     },
     iconCircle: {
       width: 96,
