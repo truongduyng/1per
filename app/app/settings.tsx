@@ -25,6 +25,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useReminderManager } from "@/hooks/useReminderManager";
 import { appBlocker } from "@/lib/appBlocker";
+import { cancelAllNotifications } from "@/lib/notifications";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
 const PRIVACY_POLICY_URL = "https://yikudo.xyz/1per/privacy";
@@ -38,6 +39,7 @@ export default function SettingsScreen() {
   const version = Constants.expoConfig?.version ?? "1.0.0";
   const { preference, setPreference } = useThemePreference();
   const { hasActiveSubscription } = useRevenueCat();
+  const [isResetting, setIsResetting] = useState(false);
 
   const openExternalUrl = async (url: string) => {
     const supported = await Linking.canOpenURL(url);
@@ -74,8 +76,21 @@ export default function SettingsScreen() {
           text: "Reset",
           style: "destructive",
           onPress: async () => {
-            await resetDatabase();
-            router.replace("/onboarding");
+            setIsResetting(true);
+            try {
+              await cancelAllNotifications();
+              appBlocker.reset();
+              await resetDatabase();
+              router.replace("/onboarding");
+            } catch (error) {
+              console.error("Failed to reset app data:", error);
+              Alert.alert(
+                "Reset failed",
+                "Your data could not be fully reset. Please try again.",
+              );
+            } finally {
+              setIsResetting(false);
+            }
           },
         },
       ],
@@ -424,10 +439,14 @@ export default function SettingsScreen() {
             Data
           </Text>
           <View style={s.listCard}>
-            <Pressable style={s.actionRow} onPress={handleReset}>
+            <Pressable
+              style={s.actionRow}
+              onPress={handleReset}
+              disabled={isResetting}
+            >
               <View style={s.actionTextBlock}>
                 <Text selectable style={s.dangerLabel}>
-                  Reset all data
+                  {isResetting ? "Resetting…" : "Reset all data"}
                 </Text>
                 <Text selectable style={s.dangerCopy}>
                   Start over from onboarding and clear the local database.

@@ -290,6 +290,237 @@ function parseDateKey(key: string): Date {
   return new Date(year, month - 1, day);
 }
 
+type ChallengeRow = typeof challenges.$inferSelect;
+type HabitRow = typeof habits.$inferSelect;
+
+function ChallengeDetailModal({
+  challenge,
+  habits: challengeHabits,
+  doneIds,
+  streakMap,
+  today,
+  onClose,
+  onQuit,
+}: {
+  challenge: ChallengeRow | null;
+  habits: HabitRow[];
+  doneIds: Set<number>;
+  streakMap: Record<number, number>;
+  today: Date;
+  onClose: () => void;
+  onQuit: (id: number, title: string) => void;
+}) {
+  const C = useTheme();
+  const insets = useSafeAreaInsets();
+  const ms = makeModalStyles(C);
+  const ds = makeDetailStyles(C);
+
+  if (!challenge) return null;
+
+  const startDateObj = parseDateKey(challenge.startDate);
+  const daysElapsed = Math.round((today.getTime() - startDateObj.getTime()) / 86400000);
+  const dayNumber = Math.min(daysElapsed + 1, challenge.durationDays);
+  const isComplete = daysElapsed >= challenge.durationDays;
+  const daysLeft = Math.max(challenge.durationDays - dayNumber, 0);
+  const progress = Math.max(0, Math.min(dayNumber / challenge.durationDays, 1));
+  const doneToday = challengeHabits.filter((h) => doneIds.has(h.id)).length;
+
+  return (
+    <Modal
+      visible
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
+        <View style={ms.handle} />
+        <View style={ms.header}>
+          <Pressable
+            onPress={onClose}
+            style={ms.headerBtn}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+          >
+            <Ionicons name="close" size={24} color={C.textSecondary} />
+          </Pressable>
+          <Text style={ms.headerTitle}>Challenge</Text>
+          <View style={ms.headerBtn} />
+        </View>
+
+        <ScrollView style={ms.scroll} showsVerticalScrollIndicator={false}>
+          <View style={ds.hero}>
+            <View style={ds.heroIconWrap}>
+              <Ionicons
+                name={resolveIoniconName(challenge.icon, "flame-outline")}
+                size={26}
+                color={C.accentText}
+              />
+            </View>
+            <Text style={ds.heroTitle}>{challenge.title}</Text>
+            {challenge.subtitle ? (
+              <Text style={ds.heroSubtitle}>{challenge.subtitle}</Text>
+            ) : null}
+          </View>
+
+          <View style={ds.progressBlock}>
+            <View style={ds.progressLabelRow}>
+              <Text style={ds.progressLabel}>
+                {isComplete ? "Complete" : `Day ${dayNumber} of ${challenge.durationDays}`}
+              </Text>
+              <Text style={ds.progressPct}>{Math.round(progress * 100)}%</Text>
+            </View>
+            <View style={ds.progressTrack}>
+              <View style={[ds.progressFill, { width: `${progress * 100}%` }]} />
+            </View>
+          </View>
+
+          <View style={ds.statsRow}>
+            <View style={ds.statCell}>
+              <Text style={ds.statValue}>{dayNumber}</Text>
+              <Text style={ds.statLabel}>Current day</Text>
+            </View>
+            <View style={ds.statCell}>
+              <Text style={ds.statValue}>{daysLeft}</Text>
+              <Text style={ds.statLabel}>Days left</Text>
+            </View>
+            <View style={ds.statCell}>
+              <Text style={ds.statValue}>
+                {doneToday}/{challengeHabits.length}
+              </Text>
+              <Text style={ds.statLabel}>Done today</Text>
+            </View>
+          </View>
+
+          <Text style={[ms.label, ds.rulesLabel]}>DAILY RULES</Text>
+          <View style={ds.rulesList}>
+            {challengeHabits.map((habit) => {
+              const isDone = doneIds.has(habit.id);
+              const streak = streakMap[habit.id] ?? 0;
+              return (
+                <View key={habit.id} style={ds.ruleRow}>
+                  <Ionicons
+                    name={isDone ? "checkmark-circle" : "ellipse-outline"}
+                    size={20}
+                    color={isDone ? C.accentText : C.textQuaternary}
+                  />
+                  <View style={ds.ruleInfo}>
+                    <Text style={ds.ruleTitle} numberOfLines={1}>
+                      {habit.title}
+                    </Text>
+                    {habit.subtitle ? (
+                      <Text style={ds.ruleSubtitle} numberOfLines={1}>
+                        {habit.subtitle}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <View style={ds.ruleStreak}>
+                    <Ionicons name="flame" size={13} color={C.accentText} />
+                    <Text style={ds.ruleStreakText}>{streak}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+
+          <Pressable
+            style={ds.quitBtn}
+            onPress={() => onQuit(challenge.id, challenge.title)}
+            accessibilityRole="button"
+            accessibilityLabel="Quit challenge"
+          >
+            <Ionicons name="exit-outline" size={18} color={C.textQuaternary} />
+            <Text style={ds.quitBtnText}>Quit Challenge</Text>
+          </Pressable>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+}
+
+function makeDetailStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
+  return StyleSheet.create({
+    hero: { alignItems: "center", marginBottom: 24 },
+    heroIconWrap: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
+      backgroundColor: C.accentBg,
+      borderWidth: 1,
+      borderColor: C.accentBorder,
+      alignItems: "center",
+      justifyContent: "center",
+      marginBottom: 12,
+    },
+    heroTitle: { fontSize: 20, fontWeight: "700", color: C.textPrimary },
+    heroSubtitle: {
+      fontSize: 13,
+      lineHeight: 19,
+      color: C.textSecondary,
+      textAlign: "center",
+      marginTop: 6,
+    },
+    progressBlock: { marginBottom: 20 },
+    progressLabelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: 8,
+    },
+    progressLabel: { fontSize: 13, fontWeight: "600", color: C.textSecondary },
+    progressPct: { fontSize: 13, fontWeight: "700", color: C.accentText },
+    progressTrack: {
+      height: 8,
+      borderRadius: 999,
+      backgroundColor: C.inputBg,
+      overflow: "hidden",
+    },
+    progressFill: { height: "100%", borderRadius: 999, backgroundColor: C.accent },
+    statsRow: { flexDirection: "row", gap: 10, marginBottom: 28 },
+    statCell: {
+      flex: 1,
+      alignItems: "center",
+      backgroundColor: C.cardBg,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+      paddingVertical: 14,
+    },
+    statValue: { fontSize: 18, fontWeight: "700", color: C.textPrimary },
+    statLabel: { fontSize: 11, color: C.textTertiary, marginTop: 4 },
+    rulesLabel: { marginBottom: 10 },
+    rulesList: { gap: 10, marginBottom: 28 },
+    ruleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 12,
+      backgroundColor: C.cardBg,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+      paddingHorizontal: 14,
+      paddingVertical: 14,
+    },
+    ruleInfo: { flex: 1 },
+    ruleTitle: { fontSize: 15, fontWeight: "600", color: C.textPrimary },
+    ruleSubtitle: { fontSize: 12, color: C.textQuaternary, marginTop: 3 },
+    ruleStreak: { flexDirection: "row", alignItems: "center", gap: 4 },
+    ruleStreakText: { fontSize: 13, fontWeight: "700", color: C.textSecondary },
+    quitBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: C.inputBg,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+      borderRadius: 14,
+      paddingVertical: 14,
+    },
+    quitBtnText: { fontSize: 14, fontWeight: "700", color: C.textQuaternary },
+  });
+}
+
 const MAIN_GOAL_HABIT_ID = -1;
 const EVENING_RESET_HABIT_ID = -2;
 const ALL_DAYS_LIST = [...ALL_DAYS];
@@ -302,6 +533,7 @@ export default function RoutinesScreen() {
   const todayName = DAY_NAMES[today.getDay()];
   const [expandedHabitId, setExpandedHabitId] = useState<number | null>(null);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [detailChallengeId, setDetailChallengeId] = useState<number | null>(null);
 
   const { data: allHabits } = useLiveQuery(
     db.select().from(habits).where(isNull(habits.archivedAt)),
@@ -466,6 +698,18 @@ export default function RoutinesScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   };
 
+  const detailChallenge = useMemo(
+    () => (activeChallenges ?? []).find((c) => c.id === detailChallengeId) ?? null,
+    [activeChallenges, detailChallengeId],
+  );
+  const detailChallengeHabits = useMemo(
+    () =>
+      detailChallengeId == null
+        ? []
+        : (allHabits ?? []).filter((h) => h.challengeId === detailChallengeId),
+    [allHabits, detailChallengeId],
+  );
+
   const removeHabit = (id: number, title: string, challengeId: number | null) => {
     if (challengeId != null) {
       Alert.alert(
@@ -505,6 +749,7 @@ export default function RoutinesScreen() {
           style: "destructive",
           onPress: async () => {
             await challengeOps.end(id);
+            setDetailChallengeId(null);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           },
         },
@@ -606,7 +851,12 @@ export default function RoutinesScreen() {
                 const progress = Math.max(0, Math.min(dayNumber / challenge.durationDays, 1));
                 return (
                   <View key={challenge.id} style={s.habitCard}>
-                    <View style={s.habitCardRow}>
+                    <Pressable
+                      style={s.habitCardRow}
+                      onPress={() => setDetailChallengeId(challenge.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${challenge.title} details`}
+                    >
                       <View style={s.habitIconWrap}>
                         <Ionicons
                           name={resolveIoniconName(challenge.icon, "flame-outline")}
@@ -632,7 +882,7 @@ export default function RoutinesScreen() {
                       >
                         <Ionicons name="close-circle-outline" size={20} color={C.textQuaternary} />
                       </Pressable>
-                    </View>
+                    </Pressable>
                     <View style={s.challengeProgressTrack}>
                       <View style={[s.challengeProgressFill, { width: `${progress * 100}%` }]} />
                     </View>
@@ -752,6 +1002,16 @@ export default function RoutinesScreen() {
         visible={addModalVisible}
         onClose={() => setAddModalVisible(false)}
         onSave={addCustomHabit}
+      />
+
+      <ChallengeDetailModal
+        challenge={detailChallenge}
+        habits={detailChallengeHabits}
+        doneIds={doneIds}
+        streakMap={streakMap}
+        today={today}
+        onClose={() => setDetailChallengeId(null)}
+        onQuit={endChallenge}
       />
     </View>
   );

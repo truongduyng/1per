@@ -159,6 +159,17 @@ export const appBlocker = {
     return true;
   },
 
+  reset() {
+    if (!DeviceActivity.isAvailable()) return;
+    DeviceActivity.stopMonitoring([DAILY_LOCK_ACTIVITY_NAME]);
+    DeviceActivity.unblockSelection(
+      getSelectionInput(),
+      "Kadoze anti-doomscroll reset",
+    );
+    DeviceActivity.clearAllManagedSettingsStoreSettings();
+    DeviceActivity.refreshManagedSettingsStore();
+  },
+
   getDailyLockTime(): DailyLockTime {
     return readDailyLockTime();
   },

@@ -131,12 +131,12 @@ async function generateAffirmation(env: Env, date: string) {
       {
         role: "system",
         content:
-          "You write concise daily affirmations for a focus and habit-building app. Return exactly one sentence, no quotes, no emoji, no markdown.",
+          "You write very short daily affirmations for a focus and habit-building app. Return exactly one short sentence, no quotes, no emoji, no markdown.",
       },
       {
         role: "user",
         content:
-          `Generate a warm, grounded affirmation for ${date}. It should be original, 8 to 18 words, first person, practical, and not cheesy.`,
+          `Generate a warm, grounded affirmation for ${date}. It must be original, 5 to 10 words max, first person, practical, and not cheesy.`,
       },
     ],
     max_tokens: 48,
