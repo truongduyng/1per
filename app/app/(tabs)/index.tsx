@@ -187,6 +187,9 @@ export default function HomeScreen() {
       supported: appBlocker.isSupported,
     });
   const [showBlockerPicker, setShowBlockerPicker] = useState(false);
+  const [lockCondition, setLockCondition] = useState(() =>
+    appBlocker.getLockCondition(),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -209,10 +212,12 @@ export default function HomeScreen() {
     loadAffirmation();
 
     // Re-sync on foreground so the widget picks up a new day's affirmation
-    // even if the app was left running/backgrounded across midnight.
+    // even if the app was left running/backgrounded across midnight, and so
+    // an app-lock condition change made in Settings takes effect right away.
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         loadAffirmation();
+        setLockCondition(appBlocker.getLockCondition());
       }
     });
 
@@ -231,7 +236,8 @@ export default function HomeScreen() {
   const hasHabitsDue = todayHabits.length > 0;
   const habitsComplete =
     !hasHabitsDue || habitsDoneCount === todayHabits.length;
-  const appLockUnlocked = isGoalComplete && habitsComplete;
+  const appLockUnlocked =
+    lockCondition === "goal" ? isGoalComplete : isGoalComplete && habitsComplete;
   const hasBlockedAppSelection = Boolean(blockerSelection.hasSelection);
   const lockBlockers = [
     {
@@ -239,13 +245,17 @@ export default function HomeScreen() {
       done: isGoalComplete,
       detail: goalText || "Choose the one thing that matters first",
     },
-    {
-      label: hasHabitsDue ? "Habits" : "No habits due",
-      done: habitsComplete,
-      detail: hasHabitsDue
-        ? `${habitsDoneCount}/${todayHabits.length} finished`
-        : "Nothing scheduled today",
-    },
+    ...(lockCondition === "goal_and_habits"
+      ? [
+          {
+            label: hasHabitsDue ? "Habits" : "No habits due",
+            done: habitsComplete,
+            detail: hasHabitsDue
+              ? `${habitsDoneCount}/${todayHabits.length} finished`
+              : "Nothing scheduled today",
+          },
+        ]
+      : []),
   ];
   const goalConfettiProgress = useAnimatedValue(0);
 
@@ -972,6 +982,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       lineHeight: 31,
       minHeight: 68,
       padding: 0,
+      textAlignVertical: "center",
     },
     goalPlaceholderTitle: {
       fontSize: 23,

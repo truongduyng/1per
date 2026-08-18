@@ -11,6 +11,11 @@ const DEFAULT_DAILY_LOCK_MINUTE = 0;
 
 export type DailyLockTime = { hour: number; minute: number };
 
+// "goal": unlock once the main task is done.
+// "goal_and_habits": unlock only once the main task AND all of today's habits are done.
+export type AppLockCondition = "goal" | "goal_and_habits";
+const DEFAULT_LOCK_CONDITION: AppLockCondition = "goal_and_habits";
+
 export type AppBlockerSelectionSummary = {
   supported: boolean;
   applicationCount?: number;
@@ -182,6 +187,17 @@ export const appBlocker = {
     // for the next applyShield/clearShield call.
     await scheduleDailyLock();
     return true;
+  },
+
+  getLockCondition(): AppLockCondition {
+    const stored = storage.getString(STORAGE_KEYS.APP_LOCK_CONDITION);
+    return stored === "goal" || stored === "goal_and_habits"
+      ? stored
+      : DEFAULT_LOCK_CONDITION;
+  },
+
+  setLockCondition(condition: AppLockCondition) {
+    storage.set(STORAGE_KEYS.APP_LOCK_CONDITION, condition);
   },
 
   async getSelectionSummary(): Promise<AppBlockerSelectionSummary> {
