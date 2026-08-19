@@ -1,4 +1,5 @@
 import GradientBackground from "@/components/GradientBackground";
+import { HabitCheckInModal, type HabitCheckInDraft } from "@/components/HabitCheckInModal";
 import {
   db,
   habits,
@@ -13,6 +14,7 @@ import {
   syncDailyAffirmationWidget,
 } from "@/lib/dailyAffirmation";
 import { syncGoalHabitsWidget } from "@/lib/goalHabitsWidget";
+import { deleteHabitPhoto } from "@/lib/habitPhotos";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
@@ -167,14 +169,44 @@ export default function HomeScreen() {
   const progressOffset =
     PROGRESS_RING_CIRCUMFERENCE * (1 - todayProgress.ratio);
 
-  const toggleHabit = async (habitId: number, isDone: boolean) => {
+  const [checkInHabitId, setCheckInHabitId] = useState<number | null>(null);
+
+  // Photo + reflection attached to today's check-in, keyed by habit.
+  const todayCheckIns = useMemo(() => {
+    const map: Record<number, { photoUri: string | null; note: string | null }> = {};
+    for (const c of allCompletions ?? []) {
+      if (c.date === todayKey) {
+        map[c.habitId] = { photoUri: c.photoUri ?? null, note: c.note ?? null };
+      }
+    }
+    return map;
+  }, [allCompletions, todayKey]);
+
+  const checkInHabit = useMemo(
+    () => todayHabits.find((habit) => habit.id === checkInHabitId) ?? null,
+    [todayHabits, checkInHabitId],
+  );
+
+  const openCheckIn = (habitId: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (isDone) {
-      await completionOps.markUndone(habitId, today);
-    } else {
-      await completionOps.markDone(habitId, today);
+    setCheckInHabitId(habitId);
+  };
+
+  const submitCheckIn = async (habitId: number, draft: HabitCheckInDraft) => {
+    const wasDone = doneIds.has(habitId);
+    await completionOps.markDone(habitId, today, {
+      photoUri: draft.photoUri,
+      note: draft.note,
+    });
+    if (!wasDone) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
+  };
+
+  const undoCheckIn = async (habitId: number) => {
+    deleteHabitPhoto(todayCheckIns[habitId]?.photoUri);
+    await completionOps.markUndone(habitId, today);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
   const isEveningResetUnlocked = useMemo(
@@ -703,7 +735,13 @@ export default function HomeScreen() {
                     {i > 0 && <View style={s.divider} />}
                     <Pressable
                       style={s.row}
-                      onPress={() => toggleHabit(habit.id, done)}
+                      onPress={() => openCheckIn(habit.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        done
+                          ? `${habit.title}, done today. Open check-in`
+                          : `Check in ${habit.title}`
+                      }
                     >
                       <Ionicons
                         name={resolveIoniconName(habit.icon, "star-outline")}
@@ -719,6 +757,21 @@ export default function HomeScreen() {
                           <Text style={s.rowSubtitle}>{habit.subtitle}</Text>
                         )}
                       </View>
+                      {todayCheckIns[habit.id]?.photoUri ? (
+                        <Ionicons
+                          name="image-outline"
+                          size={16}
+                          color={C.textQuaternary}
+                          style={s.checkInBadge}
+                        />
+                      ) : todayCheckIns[habit.id]?.note ? (
+                        <Ionicons
+                          name="chatbubble-ellipses-outline"
+                          size={16}
+                          color={C.textQuaternary}
+                          style={s.checkInBadge}
+                        />
+                      ) : null}
                       <View style={[s.checkbox, done && s.checkboxDone]}>
                         {done && (
                           <Ionicons
@@ -877,6 +930,22 @@ export default function HomeScreen() {
           </View>
         </View>
       </KeyboardAwareScrollView>
+
+      {checkInHabit ? (
+        <HabitCheckInModal
+          key={`check-in-${checkInHabit.id}-${todayKey}`}
+          visible={checkInHabitId != null}
+          habitId={checkInHabit.id}
+          habitTitle={checkInHabit.title}
+          dateKey={todayKey}
+          isDone={doneIds.has(checkInHabit.id)}
+          initialPhotoUri={todayCheckIns[checkInHabit.id]?.photoUri ?? null}
+          initialNote={todayCheckIns[checkInHabit.id]?.note ?? null}
+          onClose={() => setCheckInHabitId(null)}
+          onSubmit={(draft) => submitCheckIn(checkInHabit.id, draft)}
+          onUndo={() => undoCheckIn(checkInHabit.id)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -1317,6 +1386,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     rowTitle: { fontSize: 15, fontWeight: "600", color: C.textPrimary },
     rowTitleDone: { color: C.textTertiary, textDecorationLine: "line-through" },
     rowSubtitle: { fontSize: 12, color: C.textQuaternary, marginTop: 2 },
+    checkInBadge: { marginRight: 10 },
     checkbox: {
       width: 20,
       height: 20,

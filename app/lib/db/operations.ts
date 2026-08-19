@@ -85,19 +85,29 @@ export const habitOps = {
 };
 
 // ── completionOps ─────────────────────────────────────────────────────────────
+export type HabitCheckIn = {
+  photoUri?: string | null;
+  note?: string | null;
+};
+
 export const completionOps = {
   dateKey(date: Date): string {
     return getLocalDateString(date);
   },
 
-  async markDone(habitId: number, date: Date) {
+  // `checkIn` carries the optional proof photo and self-reflection the user
+  // attaches when marking the habit done. Omitting it clears both fields, so
+  // an edit that removes the photo/note is persisted as such.
+  async markDone(habitId: number, date: Date, checkIn?: HabitCheckIn) {
     const key = this.dateKey(date);
+    const photoUri = checkIn?.photoUri?.trim() || null;
+    const note = checkIn?.note?.trim() || null;
     return await withInitializedDb(() =>
       db.insert(habitCompletions)
-        .values({ habitId, date: key, status: 'done' })
+        .values({ habitId, date: key, status: 'done', photoUri, note })
         .onConflictDoUpdate({
           target: [habitCompletions.habitId, habitCompletions.date],
-          set: { status: 'done' },
+          set: { status: 'done', photoUri, note },
         })
         .returning()
     );
@@ -110,6 +120,16 @@ export const completionOps = {
         and(eq(habitCompletions.habitId, habitId), eq(habitCompletions.date, key))
       )
     );
+  },
+
+  async getForDate(habitId: number, date: Date) {
+    const key = this.dateKey(date);
+    const rows = await withInitializedDb(() =>
+      db.select().from(habitCompletions)
+        .where(and(eq(habitCompletions.habitId, habitId), eq(habitCompletions.date, key)))
+        .limit(1)
+    );
+    return rows[0] ?? null;
   },
 
   async markSkipped(habitId: number, date: Date) {
