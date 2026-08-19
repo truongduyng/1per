@@ -53,6 +53,13 @@ const SHIELD_TEXT_INVERSE = { red: 10, green: 10, blue: 10 };
 function updateDefaultShield() {
   DeviceActivity.updateShield(
     {
+      // Shield colors are a fixed dark palette, not adaptive to the device's
+      // system appearance. Without an explicit non-adaptive blur style, iOS
+      // renders backgroundColor through a system-adaptive material, which
+      // washes it out to a light background (with barely-visible text) when
+      // the device is in light mode. systemMaterialDark keeps the blur dark
+      // regardless of system appearance.
+      backgroundBlurStyle: DeviceActivity.UIBlurEffectStyle.systemMaterialDark,
       backgroundColor: SHIELD_BACKGROUND,
       title: "Not right now",
       titleColor: SHIELD_WHITE,
