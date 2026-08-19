@@ -48,6 +48,8 @@ export const habitCompletions = sqliteTable('habit_completions', {
   habitId: integer('habit_id').notNull().references(() => habits.id),
   date: text('date').notNull(),                  // 'YYYY-MM-DD'
   status: text('status').notNull().default('done'), // 'done' | 'skipped'
+  photoUri: text('photo_uri'),                   // local file:// proof photo attached at check-in
+  note: text('note'),                            // free-text self-reflection written at check-in
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 

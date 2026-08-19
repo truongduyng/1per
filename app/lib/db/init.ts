@@ -1,3 +1,4 @@
+import { deleteAllHabitPhotos } from '@/lib/habitPhotos';
 import { storage } from '@/lib/storage';
 import { expoDb } from './database';
 
@@ -9,6 +10,7 @@ export async function resetDatabase() {
     for (const table of tables) {
       await expoDb.execAsync(`DROP TABLE IF EXISTS ${table};`);
     }
+    deleteAllHabitPhotos();
     storage.clearAll();
     initializationPromise = null;
     await ensureDatabaseInitialized();
@@ -109,10 +111,31 @@ export async function initializeDatabase() {
         habit_id INTEGER NOT NULL REFERENCES habits(id),
         date TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'done',
+        photo_uri TEXT,
+        note TEXT,
         created_at INTEGER NOT NULL DEFAULT (unixepoch()),
         UNIQUE(habit_id, date)
       );
     `);
+
+    const completionColumns = expoDb.getAllSync<{ name: string }>(
+      `PRAGMA table_info(habit_completions);`
+    );
+    const hasPhotoUri = completionColumns.some((column) => column.name === 'photo_uri');
+    if (!hasPhotoUri) {
+      expoDb.execSync(`
+        ALTER TABLE habit_completions
+        ADD COLUMN photo_uri TEXT;
+      `);
+    }
+
+    const hasNote = completionColumns.some((column) => column.name === 'note');
+    if (!hasNote) {
+      expoDb.execSync(`
+        ALTER TABLE habit_completions
+        ADD COLUMN note TEXT;
+      `);
+    }
 
     expoDb.execSync(`
       CREATE TABLE IF NOT EXISTS daily_focus (
