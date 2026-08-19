@@ -12,6 +12,7 @@ import {
   getDailyAffirmation,
   syncDailyAffirmationWidget,
 } from "@/lib/dailyAffirmation";
+import { syncGoalHabitsWidget } from "@/lib/goalHabitsWidget";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
@@ -230,6 +231,20 @@ export default function HomeScreen() {
   const firstName = userProfile?.name?.split(" ")[0] ?? "there";
   const goalText = (todayFocus?.goal ?? "").trim();
   const isGoalComplete = Boolean(todayFocus?.completedAt);
+
+  useEffect(() => {
+    syncGoalHabitsWidget({
+      date: todayKey,
+      goalText,
+      goalDone: isGoalComplete,
+      habits: todayHabits.map((habit) => ({
+        id: habit.id,
+        title: habit.title,
+        done: doneIds.has(habit.id),
+      })),
+    });
+  }, [todayKey, goalText, isGoalComplete, todayHabits, doneIds]);
+
   const habitsDoneCount = todayHabits.filter((habit) =>
     doneIds.has(habit.id),
   ).length;
