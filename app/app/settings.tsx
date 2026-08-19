@@ -24,10 +24,14 @@ import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useReminderManager } from "@/hooks/useReminderManager";
-import { appBlocker } from "@/lib/appBlocker";
+import { appBlocker, type AppLockCondition } from "@/lib/appBlocker";
 import { cancelAllNotifications } from "@/lib/notifications";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
+const LOCK_CONDITION_OPTIONS: { value: AppLockCondition; label: string }[] = [
+  { value: "goal", label: "Main task only" },
+  { value: "goal_and_habits", label: "Main task + habits" },
+];
 const PRIVACY_POLICY_URL = "https://yikudo.xyz/1per/privacy";
 const TERMS_OF_SERVICE_URL = "https://yikudo.xyz/1per/terms";
 const SHOW_SCREENSHOT_DATA_ACTION =
@@ -126,6 +130,9 @@ export default function SettingsScreen() {
     appBlocker.getDailyLockTime(),
   );
   const [isUpdatingAppLockTime, setIsUpdatingAppLockTime] = useState(false);
+  const [lockCondition, setLockCondition] = useState(() =>
+    appBlocker.getLockCondition(),
+  );
 
   const [pickerTarget, setPickerTarget] = useState<
     "habit" | "evening" | "appLock" | null
@@ -348,6 +355,36 @@ export default function SettingsScreen() {
             <Text selectable style={s.sectionLabel}>
               App Lock
             </Text>
+            <View style={s.card}>
+              <Text selectable style={s.cardTitle}>
+                Unlock condition
+              </Text>
+              <Text selectable style={s.cardCopy}>
+                Choose what needs to be done today before blocked apps unlock.
+              </Text>
+              <View style={s.segmentRow}>
+                {LOCK_CONDITION_OPTIONS.map((option) => {
+                  const active = lockCondition === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      style={[s.segmentButton, active && s.segmentButtonActive]}
+                      onPress={() => {
+                        appBlocker.setLockCondition(option.value);
+                        setLockCondition(option.value);
+                      }}
+                    >
+                      <Text
+                        selectable
+                        style={[s.segmentLabel, active && s.segmentLabelActive]}
+                      >
+                        {option.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
             <View style={s.listCard}>
               <Pressable
                 style={s.listRow}

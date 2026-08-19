@@ -102,7 +102,8 @@ export function HabitHeatmap({ habitId, daysOfWeek, completions, today, createdA
   const cellColor = (status: string) => {
     if (status === "done") return C.accent;
     if (status === "skipped") return C.accentBorder;
-    return C.inputBg; // missed, not_scheduled, future, or before_start
+    if (status === "before_start") return "transparent"; // no cell before the habit existed
+    return C.heatIdle; // missed, not_scheduled, or future
   };
 
   return (
@@ -129,6 +130,7 @@ export function HabitHeatmap({ habitId, daysOfWeek, completions, today, createdA
           <View key={wi} style={[s.col, wi > 0 && { marginLeft: GAP }]}>
             {col.map((cell, di) => {
               const isToday = cell.date === todayStr;
+              const isBeforeStart = cell.status === "before_start";
               return (
                 <View
                   key={di}
@@ -139,8 +141,12 @@ export function HabitHeatmap({ habitId, daysOfWeek, completions, today, createdA
                       height: CELL,
                       marginTop: di > 0 ? GAP : 0,
                       backgroundColor: cellColor(cell.status),
-                      borderColor: isToday ? C.accentText : C.cardBorder,
-                      borderWidth: isToday ? 1.5 : 1,
+                      borderColor: isBeforeStart
+                        ? "transparent"
+                        : isToday
+                          ? C.accentText
+                          : C.heatIdleBorder,
+                      borderWidth: isBeforeStart ? 0 : isToday ? 1.5 : 1,
                     },
                   ]}
                 />

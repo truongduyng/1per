@@ -353,6 +353,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       color: "#fff",
       fontSize: 17,
       fontWeight: "700",
+      textAlignVertical: "center",
     },
     avatarGrid: {
       flexDirection: "row",

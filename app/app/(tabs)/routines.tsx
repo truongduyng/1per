@@ -235,6 +235,7 @@ function makeModalStyles(C: ReturnType<typeof import("@/hooks/useTheme").useThem
       paddingVertical: 13,
       fontSize: 15,
       color: C.textPrimary,
+      textAlignVertical: "center",
     },
     iconGrid: {
       flexDirection: "row",
