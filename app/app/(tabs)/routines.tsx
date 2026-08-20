@@ -1,5 +1,4 @@
 import GradientBackground from "@/components/GradientBackground";
-import { HabitCheckInModal, type HabitCheckInDraft } from "@/components/HabitCheckInModal";
 import { HabitHeatmap } from "@/components/HabitHeatmap";
 import { useTheme } from "@/hooks/useTheme";
 import {
@@ -8,11 +7,9 @@ import {
   habitCompletions,
   dailyFocus,
   challenges,
-  completionOps,
   habitOps,
   challengeOps,
 } from "@/lib/db";
-import { deleteHabitPhoto } from "@/lib/habitPhotos";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { isNull } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
@@ -22,7 +19,6 @@ import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -538,7 +534,6 @@ export default function RoutinesScreen() {
   const [expandedHabitId, setExpandedHabitId] = useState<number | null>(null);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [detailChallengeId, setDetailChallengeId] = useState<number | null>(null);
-  const [checkInHabitId, setCheckInHabitId] = useState<number | null>(null);
 
   const { data: allHabits } = useLiveQuery(
     db.select().from(habits).where(isNull(habits.archivedAt)),
@@ -675,45 +670,6 @@ export default function RoutinesScreen() {
     }
     return map;
   }, [allCompletionsWithSpecial]);
-
-  // Today's check-in row per habit, so the sheet can show the photo and
-  // reflection already attached to a completed habit.
-  const todayCheckIns = useMemo(() => {
-    const map: Record<number, { photoUri: string | null; note: string | null }> = {};
-    for (const c of allCompletions ?? []) {
-      if (c.date === todayKey) {
-        map[c.habitId] = { photoUri: c.photoUri ?? null, note: c.note ?? null };
-      }
-    }
-    return map;
-  }, [allCompletions, todayKey]);
-
-  const checkInHabit = useMemo(
-    () => (allHabits ?? []).find((h) => h.id === checkInHabitId) ?? null,
-    [allHabits, checkInHabitId],
-  );
-
-  const openCheckIn = (habitId: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCheckInHabitId(habitId);
-  };
-
-  const submitCheckIn = async (habitId: number, draft: HabitCheckInDraft) => {
-    const wasDone = doneIds.has(habitId);
-    await completionOps.markDone(habitId, today, {
-      photoUri: draft.photoUri,
-      note: draft.note,
-    });
-    if (!wasDone) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-  };
-
-  const undoCheckIn = async (habitId: number) => {
-    deleteHabitPhoto(todayCheckIns[habitId]?.photoUri);
-    await completionOps.markUndone(habitId, today);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
 
   const addCustomHabit = async (
     title: string,
@@ -947,20 +903,13 @@ export default function RoutinesScreen() {
                 const streak = streakMap[habit.id] ?? 0;
                 const streakDots = Math.min(streak, 10);
                 const isExpanded = expandedHabitId === habit.id;
-                const isDone = doneIds.has(habit.id);
-                const checkIn = todayCheckIns[habit.id];
                 return (
                   <View key={habit.id} style={s.habitCard}>
                     <Pressable
                       style={s.habitCardRow}
-                      onPress={() => openCheckIn(habit.id)}
-                      onLongPress={() => setExpandedHabitId(isExpanded ? null : habit.id)}
+                      onPress={() => setExpandedHabitId(isExpanded ? null : habit.id)}
                       accessibilityRole="button"
-                      accessibilityLabel={
-                        isDone
-                          ? `${habit.title}, done today. Open check-in`
-                          : `Check in ${habit.title}`
-                      }
+                      accessibilityLabel={isExpanded ? `Hide ${habit.title} details` : `Show ${habit.title} details`}
                     >
                       <View style={s.habitIconWrap}>
                         <Ionicons
@@ -1003,13 +952,6 @@ export default function RoutinesScreen() {
                           <Text style={s.streakText}>{streak}</Text>
                         </View>
                       </View>
-                      <View style={s.doneMarkWrap}>
-                        <View style={[s.checkbox, isDone && s.checkboxDone]}>
-                          {isDone && (
-                            <Ionicons name="checkmark" size={13} color={C.textInverse} />
-                          )}
-                        </View>
-                      </View>
                       <Pressable
                         style={s.expandBtn}
                         onPress={() => setExpandedHabitId(isExpanded ? null : habit.id)}
@@ -1026,27 +968,6 @@ export default function RoutinesScreen() {
                     </Pressable>
                     {isExpanded && (
                       <>
-                        {isDone && (checkIn?.photoUri || checkIn?.note) ? (
-                          <Pressable
-                            style={s.checkInPreview}
-                            onPress={() => openCheckIn(habit.id)}
-                            accessibilityRole="button"
-                            accessibilityLabel={`Edit today's check-in for ${habit.title}`}
-                          >
-                            {checkIn.photoUri ? (
-                              <Image
-                                source={{ uri: checkIn.photoUri }}
-                                style={s.checkInPhoto}
-                                resizeMode="cover"
-                              />
-                            ) : null}
-                            {checkIn.note ? (
-                              <Text style={s.checkInNote} numberOfLines={4}>
-                                {checkIn.note}
-                              </Text>
-                            ) : null}
-                          </Pressable>
-                        ) : null}
                         <HabitHeatmap
                           habitId={habit.id}
                           daysOfWeek={habit.daysOfWeek as string[]}
@@ -1080,22 +1001,6 @@ export default function RoutinesScreen() {
         onClose={() => setAddModalVisible(false)}
         onSave={addCustomHabit}
       />
-
-      {checkInHabit ? (
-        <HabitCheckInModal
-          key={`check-in-${checkInHabit.id}-${todayKey}`}
-          visible={checkInHabitId != null}
-          habitId={checkInHabit.id}
-          habitTitle={checkInHabit.title}
-          dateKey={todayKey}
-          isDone={doneIds.has(checkInHabit.id)}
-          initialPhotoUri={todayCheckIns[checkInHabit.id]?.photoUri ?? null}
-          initialNote={todayCheckIns[checkInHabit.id]?.note ?? null}
-          onClose={() => setCheckInHabitId(null)}
-          onSubmit={(draft) => submitCheckIn(checkInHabit.id, draft)}
-          onUndo={() => undoCheckIn(checkInHabit.id)}
-        />
-      ) : null}
 
       <ChallengeDetailModal
         challenge={detailChallenge}
@@ -1234,44 +1139,6 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     },
     streakText: { fontSize: 19, fontWeight: "800", color: C.accentText, lineHeight: 20 },
     streakLabel: { fontSize: 11, color: C.textTertiary, marginTop: 4 },
-    doneMarkWrap: {
-      marginLeft: 12,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    checkbox: {
-      width: 22,
-      height: 22,
-      borderRadius: 11,
-      borderWidth: 1.5,
-      borderColor: C.cardBorder,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    checkboxDone: {
-      backgroundColor: C.accent,
-      borderColor: C.accent,
-    },
-    checkInPreview: {
-      marginTop: 12,
-      gap: 10,
-      backgroundColor: C.inputBg,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: C.cardBorder,
-      padding: 10,
-    },
-    checkInPhoto: {
-      width: "100%",
-      height: 160,
-      borderRadius: 8,
-      backgroundColor: C.cardBg,
-    },
-    checkInNote: {
-      fontSize: 13,
-      lineHeight: 19,
-      color: C.textSecondary,
-    },
     expandBtn: {
       width: 36,
       height: 36,
