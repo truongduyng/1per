@@ -109,12 +109,12 @@ struct GoalHabitsWidgetView: View {
 
   private var goalRow: some View {
     HStack(alignment: .top, spacing: 8) {
-      Image(systemName: entry.goalDone ? "checkmark.circle.fill" : "circle")
-        .font(.system(size: 18))
+      Image(systemName: "target")
+        .font(.system(size: 20))
         .foregroundStyle(entry.goalDone ? Color("goalHabitsAccent") : Color("goalHabitsMuted"))
 
       Text(entry.goalText.isEmpty ? "Set your main task" : entry.goalText)
-        .font(.system(size: 16, weight: .bold, design: .rounded))
+        .font(.system(size: 18, weight: .bold, design: .rounded))
         .foregroundStyle(Color("goalHabitsInk"))
         .strikethrough(entry.goalDone, color: Color("goalHabitsMuted"))
         .lineLimit(2)
@@ -124,7 +124,7 @@ struct GoalHabitsWidgetView: View {
 
   private func habitRow(_ habit: GoalHabitsWidgetHabit) -> some View {
     HStack(spacing: 8) {
-      Image(systemName: "target")
+      Image(systemName: habit.done ? "checkmark.circle.fill" : "circle")
         .font(.system(size: 15))
         .foregroundStyle(habit.done ? Color("goalHabitsAccent") : Color("goalHabitsMuted"))
 
