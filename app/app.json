@@ -5,7 +5,7 @@
     "platforms": [
       "ios"
     ],
-    "version": "1.0.10",
+    "version": "1.0.11",
     "orientation": "portrait",
     "scheme": "kadoze",
     "userInterfaceStyle": "automatic",
