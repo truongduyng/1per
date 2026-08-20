@@ -18,7 +18,7 @@ Professionals, solopreneurs, and continuous learners who want a distraction-free
 
 * **UI/UX:** Minimalist, distraction-free interface utilizing a charcoal and burnt orange palette to reduce eye strain while providing clear visual hierarchy. Dark theme by default.
 * **Framework:** Cross-platform mobile development (React Native / Expo); iOS is the primary shipping platform.
-* **Data:** Offline-first - all user data lives on-device (SQLite). No accounts, no sync.
+* **Data:** Offline-first SQLite with optional Sign in with Apple cloud backup and restore. The app remains usable without a network connection.
 * **Backend:** A lightweight Cloudflare Worker (D1 + Workers AI) used only for AI-generated daily affirmations and anonymous onboarding analytics. The app must remain fully functional with no network.
 * **Monetization:** RevenueCat subscription (annual) and lifetime purchase, presented as the final onboarding step.
 

@@ -1,7 +1,10 @@
 interface Env {
   DB: D1Database;
   AI: Ai;
+  APPLE_BUNDLE_ID: string;
 }
+
+type AppleKey = { kty: string; kid: string; use: string; alg: string; n: string; e: string };
 
 interface OnboardingSubmission {
   profileId: number | null;
@@ -40,6 +43,106 @@ function isString(value: unknown): value is string {
 
 function isDateKey(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function decodeBase64Url(value: string) {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  const binary = atob(normalized);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function authenticateAppleToken(token: string, env: Env): Promise<string | null> {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+
+  try {
+    const header = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[0]))) as { kid?: string; alg?: string };
+    const payload = JSON.parse(new TextDecoder().decode(decodeBase64Url(parts[1]))) as {
+      iss?: string; aud?: string; sub?: string; exp?: number;
+    };
+    if (header.alg !== "RS256" || !header.kid || payload.iss !== "https://appleid.apple.com" ||
+      payload.aud !== env.APPLE_BUNDLE_ID || !payload.sub || !payload.exp || payload.exp <= Math.floor(Date.now() / 1000)) {
+      return null;
+    }
+
+    const keysResponse = await fetch("https://appleid.apple.com/auth/keys");
+    if (!keysResponse.ok) return null;
+    const keys = (await keysResponse.json()) as { keys: AppleKey[] };
+    const key = keys.keys.find((candidate) => candidate.kid === header.kid && candidate.alg === "RS256");
+    if (!key) return null;
+    const cryptoKey = await crypto.subtle.importKey(
+      "jwk", key as JsonWebKey,
+      { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["verify"],
+    );
+    const valid = await crypto.subtle.verify(
+      "RSASSA-PKCS1-v1_5", cryptoKey, decodeBase64Url(parts[2]),
+      new TextEncoder().encode(`${parts[0]}.${parts[1]}`),
+    );
+    return valid ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+async function authenticate(request: Request, env: Env): Promise<string | null> {
+  const authorization = request.headers.get("Authorization");
+  const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
+  if (!token) return null;
+
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  const tokenHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const session = await env.DB.prepare(
+    "SELECT user_id FROM sync_sessions WHERE token_hash = ? AND expires_at > ? LIMIT 1",
+  ).bind(tokenHash, Math.floor(Date.now() / 1000)).first<{ user_id: string }>();
+  return session?.user_id ?? authenticateAppleToken(token, env);
+}
+
+async function handleCreateSession(request: Request, env: Env) {
+  const authorization = request.headers.get("Authorization");
+  const token = authorization?.startsWith("Bearer ") ? authorization.slice(7) : "";
+  const userId = await authenticateAppleToken(token, env);
+  if (!userId) return json({ ok: false, error: "Invalid Apple identity token." }, { status: 401 });
+
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const sessionToken = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(sessionToken));
+  const tokenHash = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  await env.DB.prepare(
+    "INSERT INTO sync_sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)",
+  ).bind(tokenHash, userId, Math.floor(Date.now() / 1000) + 31_536_000).run();
+  return json({ ok: true, sessionToken });
+}
+
+function isSnapshot(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") return false;
+  const snapshot = value as Record<string, unknown>;
+  return snapshot.version === 1 &&
+    ["profiles", "challenges", "habits", "habit_completions", "daily_focus", "daily_affirmations"]
+      .every((key) => Array.isArray(snapshot[key]));
+}
+
+async function handleSync(request: Request, env: Env) {
+  const userId = await authenticate(request, env);
+  if (!userId) return json({ ok: false, error: "Invalid Apple identity token." }, { status: 401 });
+
+  if (request.method === "GET") {
+    const row = await env.DB.prepare("SELECT snapshot FROM user_snapshots WHERE user_id = ? LIMIT 1")
+      .bind(userId).first<{ snapshot: string }>();
+    if (!row) return json({ ok: false, error: "No backup found." }, { status: 404 });
+    return json(JSON.parse(row.snapshot));
+  }
+
+  let payload: unknown;
+  try { payload = await request.json(); } catch { return badRequest("Invalid JSON body."); }
+  if (!isSnapshot(payload)) return badRequest("Invalid backup payload.");
+  const serialized = JSON.stringify(payload);
+  if (serialized.length > 1_500_000) return badRequest("Backup is too large.");
+
+  await env.DB.prepare(
+    `INSERT INTO user_snapshots (user_id, snapshot, updated_at) VALUES (?, ?, datetime('now'))
+     ON CONFLICT(user_id) DO UPDATE SET snapshot = excluded.snapshot, updated_at = excluded.updated_at`,
+  ).bind(userId, serialized).run();
+  return json({ ok: true });
 }
 
 function cleanAffirmation(value: string) {
@@ -206,6 +309,14 @@ export default {
 
       if (request.method === "POST" && url.pathname === "/api/onboarding") {
         return handleOnboarding(request, env);
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/auth/session") {
+        return handleCreateSession(request, env);
+      }
+
+      if ((request.method === "GET" || request.method === "PUT") && url.pathname === "/api/sync") {
+        return handleSync(request, env);
       }
 
       return json({ ok: false, error: "Not found." }, { status: 404 });

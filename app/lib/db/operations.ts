@@ -8,12 +8,15 @@ import {
 import { ensureDatabaseInitialized } from './init';
 import { getLocalDateString } from '../timezone';
 import type { PresetChallenge } from '../presetChallenges';
+import { notifyDataChanged } from './changeListener';
 
 const ALL_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 async function withInitializedDb<T>(operation: () => Promise<T>): Promise<T> {
   await ensureDatabaseInitialized();
-  return operation();
+  const result = await operation();
+  notifyDataChanged();
+  return result;
 }
 
 // ── profileOps ────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { profileOps, ensureDatabaseInitialized } from "@/lib/db";
+import { startCloudSyncListener } from "@/lib/cloudSync";
 
 interface ProfileInitializerProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ export default function ProfileInitializer({
   const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
+    const stopCloudSync = startCloudSyncListener();
     const initializeProfile = async () => {
       try {
         await ensureDatabaseInitialized();
@@ -42,6 +44,7 @@ export default function ProfileInitializer({
     };
 
     initializeProfile();
+    return () => { stopCloudSync(); };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (isInitializing) return null;

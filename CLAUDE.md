@@ -46,7 +46,7 @@ If Metro reports a missing native module (e.g. `ExpoAsset`, `ExponentConstants`)
 
 ## Architecture Overview
 
-**1Per** is an offline-first iOS/Android app (React Native + Expo SDK 55, React 19) for getting 1% better every day - one main daily goal, habit tracking, focus sessions, and an evening reset in one unified workspace. All user data lives on-device; the worker is a fire-and-forget sidecar, never required for the app to function.
+**1Per** is an offline-first iOS/Android app (React Native + Expo SDK 55, React 19) for getting 1% better every day - one main daily goal, habit tracking, focus sessions, and an evening reset in one unified workspace. User data is local-first, with optional Sign in with Apple cloud backup/restore.
 
 ### Directory layout (inside `app/`)
 
@@ -84,7 +84,7 @@ constants/
 
 ### Data layer
 
-- **SQLite via expo-sqlite + Drizzle ORM** - no remote sync; purely local.
+- **SQLite via expo-sqlite + Drizzle ORM** - local-first. Versioned snapshots can be backed up to the Worker after Sign in with Apple.
 - Schema tables: `profiles`, `habits`, `habit_completions`, `daily_focus`, `daily_affirmations`.
 - `initializeDatabase()` runs `CREATE TABLE IF NOT EXISTS` on cold start via `ProfileInitializer`.
 - `resetDatabase()` drops all tables and clears MMKV - used in dev/reset flows.
@@ -94,7 +94,7 @@ constants/
 ### Backend worker
 
 - `lib/backend.ts` reads `EXPO_PUBLIC_CLOUDFLARE_WORKER_URL` (fallback `EXPO_PUBLIC_BACKEND_URL`); if unset, every call silently no-ops - keep it that way so the app stays fully offline-capable. Requests have an 8s abort timeout.
-- Worker endpoints (`worker/src/index.ts`): `GET /health`, `GET /api/affirmation?date=YYYY-MM-DD` (generates via Workers AI `@cf/meta/llama-3.1-8b-instruct-fp8`, cached per-date in D1), `POST /api/onboarding` (stores onboarding submissions).
+- Worker endpoints (`worker/src/index.ts`): `GET /health`, `GET /api/affirmation?date=YYYY-MM-DD` (generates via Workers AI `@cf/meta/llama-3.1-8b-instruct-fp8`, cached per-date in D1), `POST /api/onboarding` (stores onboarding submissions), `POST /api/auth/session`, and authenticated `GET/PUT /api/sync` for user snapshots. Apply migrations `0003_user_snapshots.sql` and `0004_sync_sessions.sql` before deploying sync.
 - D1 schema changes go in `worker/migrations/` as numbered SQL files, applied with wrangler migrations commands.
 
 ### Apple targets (`app/targets/`)
