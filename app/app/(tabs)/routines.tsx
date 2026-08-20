@@ -98,16 +98,31 @@ function AddCustomHabitModal({
       <View style={ms.sheet}>
         <View style={ms.handle} />
         <View style={ms.header}>
-          <Pressable onPress={handleClose} style={ms.headerBtn}>
-            <Text style={ms.cancelText}>Cancel</Text>
+          <Pressable
+            onPress={handleClose}
+            style={ms.iconBtn}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Cancel"
+          >
+            <Ionicons name="close" size={20} color={C.textSecondary} />
           </Pressable>
-          <Text style={ms.headerTitle}>New Habit</Text>
+          <Text style={ms.headerTitle} numberOfLines={1}>
+            New Habit
+          </Text>
           <Pressable
             onPress={handleSave}
-            style={[ms.headerBtn, ms.saveBtn, (!title.trim() || saving) && ms.saveBtnDisabled]}
+            style={[ms.iconBtn, ms.saveIconBtn, (!title.trim() || saving) && ms.saveIconBtnDisabled]}
             disabled={!title.trim() || saving}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Save habit"
           >
-            <Text style={[ms.saveText, (!title.trim() || saving) && ms.saveTextDisabled]}>Save</Text>
+            <Ionicons
+              name="checkmark"
+              size={20}
+              color={(!title.trim() || saving) ? C.textQuaternary : C.accentText}
+            />
           </Pressable>
         </View>
 
@@ -143,7 +158,7 @@ function AddCustomHabitModal({
             />
           </View>
 
-          <View style={ms.section}>
+          <View style={[ms.section, ms.iconSection]}>
             <Text style={ms.label}>ICON</Text>
             <View style={ms.iconGrid}>
               {ICON_OPTIONS.map((icon) => (
@@ -151,12 +166,18 @@ function AddCustomHabitModal({
                   key={icon}
                   style={[ms.iconCell, selectedIcon === icon && ms.iconCellSelected]}
                   onPress={() => setSelectedIcon(icon)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Choose ${icon.replace("-outline", "")}`}
+                  accessibilityState={{ selected: selectedIcon === icon }}
                 >
-                  <Ionicons
-                    name={icon}
-                    size={22}
-                    color={selectedIcon === icon ? C.accentText : C.iconSecondary}
-                  />
+                  <View style={ms.iconGlyph}>
+                    <Ionicons
+                      name={icon}
+                      size={22}
+                      color={selectedIcon === icon ? C.accentText : C.iconSecondary}
+                      style={ms.iconGlyphIcon}
+                    />
+                  </View>
                 </Pressable>
               ))}
             </View>
@@ -207,18 +228,32 @@ function makeModalStyles(C: ReturnType<typeof import("@/hooks/useTheme").useThem
       marginBottom: 28,
     },
     headerTitle: {
+      flex: 1,
+      textAlign: "center",
       fontSize: 16,
       fontWeight: "700",
       color: C.textPrimary,
     },
     headerBtn: { minWidth: 60 },
-    cancelText: { fontSize: 15, color: C.textSecondary },
-    saveBtn: { alignItems: "flex-end" },
-    saveText: { fontSize: 15, fontWeight: "700", color: C.accentText },
-    saveBtnDisabled: {},
-    saveTextDisabled: { color: C.textQuaternary },
+    iconBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      borderCurve: "continuous",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: C.cardBg,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+    },
+    saveIconBtn: {
+      backgroundColor: C.accentBg,
+      borderColor: C.accentBorder,
+    },
+    saveIconBtnDisabled: { opacity: 0.5 },
     scroll: { flex: 1 },
     section: { marginBottom: 24 },
+    iconSection: { marginBottom: -12 },
     label: {
       fontSize: 11,
       fontWeight: "700",
@@ -229,6 +264,7 @@ function makeModalStyles(C: ReturnType<typeof import("@/hooks/useTheme").useThem
     input: {
       backgroundColor: C.cardBg,
       borderRadius: 12,
+      borderCurve: "continuous",
       borderWidth: 1,
       borderColor: C.cardBorder,
       paddingHorizontal: 14,
@@ -256,6 +292,20 @@ function makeModalStyles(C: ReturnType<typeof import("@/hooks/useTheme").useThem
     iconCellSelected: {
       borderColor: C.accentBorder,
       backgroundColor: C.accentBg,
+    },
+    iconGlyph: {
+      width: 24,
+      height: 24,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconGlyphIcon: {
+      width: 22,
+      height: 22,
+      lineHeight: 22,
+      textAlign: "center",
+      includeFontPadding: false,
+      transform: [{ translateY: -6 }],
     },
     daysRow: {
       flexDirection: "row",

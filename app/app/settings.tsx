@@ -545,7 +545,7 @@ export default function SettingsScreen() {
               <View style={s.actionTextBlock}>
                 <Text selectable style={s.rowLabel}>{isRestoring ? "Restoring…" : "Restore from backup"}</Text>
                 <Text selectable style={s.rowCopy}>
-                  Replace this device's data with your Apple account's cloud backup.
+                  Replace this device&apos;s data with your Apple account&apos;s cloud backup.
                 </Text>
               </View>
               <Text selectable style={s.chevron}>›</Text>

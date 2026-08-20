@@ -9,12 +9,12 @@ import {
   Alert,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const NOTE_MAX_LENGTH = 500;
@@ -179,10 +179,9 @@ export function HabitCheckInModal({
               </Pressable>
             </View>
 
-            <KeyboardAwareScrollView
+            <ScrollView
               style={s.scroll}
               contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
-              bottomOffset={32}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
             >
@@ -274,7 +273,7 @@ export function HabitCheckInModal({
                   <Text style={s.undoBtnText}>Undo check-in</Text>
                 </Pressable>
               ) : null}
-            </KeyboardAwareScrollView>
+            </ScrollView>
           </View>
         </RNHostView>
       </BottomSheet>
