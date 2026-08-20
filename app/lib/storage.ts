@@ -14,6 +14,7 @@ export const STORAGE_KEYS = {
   APP_LOCK_HOUR:            'appLock.hour',
   APP_LOCK_MINUTE:          'appLock.minute',
   APP_LOCK_CONDITION:       'appLock.condition',
+  LAST_BACKUP_AT:           'sync.lastBackupAt',
 } as const;
 
 export type ReminderState = { enabled: boolean; hour: number; minute: number };

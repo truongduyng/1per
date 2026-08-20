@@ -4,7 +4,7 @@ import { Alert, Image, Text, TouchableOpacity, View, StyleSheet } from "react-na
 
 import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
-import { signInAndBackup } from "@/lib/cloudSync";
+import { signInAndSync } from "@/lib/cloudSync";
 
 export function BackupStep({ onNext }: { onNext: () => void }) {
   const C = useTheme();
@@ -14,8 +14,13 @@ export function BackupStep({ onNext }: { onNext: () => void }) {
   const handleSignIn = async () => {
     setIsSigningIn(true);
     try {
-      await signInAndBackup();
-      Alert.alert("Backup enabled", "Your data will be available after reinstalling the app.");
+      const { restored } = await signInAndSync();
+      Alert.alert(
+        restored ? "Data restored" : "Backup enabled",
+        restored
+          ? "We found a previous backup for this Apple account and restored it."
+          : "Your data will be available after reinstalling the app.",
+      );
       onNext();
     } catch (error) {
       console.error("Failed to enable cloud backup:", error);
