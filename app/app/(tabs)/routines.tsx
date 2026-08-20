@@ -19,9 +19,7 @@ import { router } from "expo-router";
 import React, { useMemo, useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -29,6 +27,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DAY_NAMES } from "@/lib/performance";
 import { resolveIoniconName, type IoniconName } from "@/lib/iconNames";
@@ -39,11 +38,9 @@ const DAY_LABELS: Record<string, string> = {
 };
 
 const ICON_OPTIONS: IoniconName[] = [
-  "star-outline", "flame-outline", "flash-outline", "leaf-outline", "heart-outline",
-  "walk-outline", "water-outline", "bed-outline", "body-outline", "journal-outline",
-  "book-outline", "pencil-outline", "barbell-outline", "bicycle-outline", "nutrition-outline",
-  "musical-notes-outline", "code-slash-outline", "bulb-outline", "camera-outline",
-  "timer-outline", "cash-outline", "stats-chart-outline", "person-outline", "earth-outline",
+  "star-outline", "flame-outline", "flash-outline", "leaf-outline", "heart-outline", "walk-outline",
+  "water-outline", "bed-outline", "body-outline", "journal-outline", "book-outline", "pencil-outline",
+  "barbell-outline", "bicycle-outline", "nutrition-outline", "bulb-outline", "timer-outline", "stats-chart-outline",
 ];
 
 function AddCustomHabitModal({
@@ -98,87 +95,91 @@ function AddCustomHabitModal({
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <View style={[ms.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={ms.handle} />
-          <View style={ms.header}>
-            <Pressable onPress={handleClose} style={ms.headerBtn}>
-              <Text style={ms.cancelText}>Cancel</Text>
-            </Pressable>
-            <Text style={ms.headerTitle}>New Habit</Text>
-            <Pressable
-              onPress={handleSave}
-              style={[ms.headerBtn, ms.saveBtn, (!title.trim() || saving) && ms.saveBtnDisabled]}
-              disabled={!title.trim() || saving}
-            >
-              <Text style={[ms.saveText, (!title.trim() || saving) && ms.saveTextDisabled]}>Save</Text>
-            </Pressable>
+      <View style={ms.sheet}>
+        <View style={ms.handle} />
+        <View style={ms.header}>
+          <Pressable onPress={handleClose} style={ms.headerBtn}>
+            <Text style={ms.cancelText}>Cancel</Text>
+          </Pressable>
+          <Text style={ms.headerTitle}>New Habit</Text>
+          <Pressable
+            onPress={handleSave}
+            style={[ms.headerBtn, ms.saveBtn, (!title.trim() || saving) && ms.saveBtnDisabled]}
+            disabled={!title.trim() || saving}
+          >
+            <Text style={[ms.saveText, (!title.trim() || saving) && ms.saveTextDisabled]}>Save</Text>
+          </Pressable>
+        </View>
+
+        <KeyboardAwareScrollView
+          style={ms.scroll}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
+          bottomOffset={32}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={ms.section}>
+            <Text style={ms.label}>HABIT NAME</Text>
+            <TextInput
+              style={ms.input}
+              placeholder="e.g. Morning run"
+              placeholderTextColor={C.textQuaternary}
+              value={title}
+              onChangeText={setTitle}
+              maxLength={60}
+              autoFocus
+            />
           </View>
 
-          <ScrollView style={ms.scroll} showsVerticalScrollIndicator={false}>
-            <View style={ms.section}>
-              <Text style={ms.label}>HABIT NAME</Text>
-              <TextInput
-                style={ms.input}
-                placeholder="e.g. Morning run"
-                placeholderTextColor={C.textQuaternary}
-                value={title}
-                onChangeText={setTitle}
-                maxLength={60}
-                autoFocus
-              />
-            </View>
+          <View style={ms.section}>
+            <Text style={ms.label}>DESCRIPTION (OPTIONAL)</Text>
+            <TextInput
+              style={ms.input}
+              placeholder="e.g. 20 minutes"
+              placeholderTextColor={C.textQuaternary}
+              value={subtitle}
+              onChangeText={setSubtitle}
+              maxLength={80}
+            />
+          </View>
 
-            <View style={ms.section}>
-              <Text style={ms.label}>DESCRIPTION (OPTIONAL)</Text>
-              <TextInput
-                style={ms.input}
-                placeholder="e.g. 20 minutes"
-                placeholderTextColor={C.textQuaternary}
-                value={subtitle}
-                onChangeText={setSubtitle}
-                maxLength={80}
-              />
+          <View style={ms.section}>
+            <Text style={ms.label}>ICON</Text>
+            <View style={ms.iconGrid}>
+              {ICON_OPTIONS.map((icon) => (
+                <Pressable
+                  key={icon}
+                  style={[ms.iconCell, selectedIcon === icon && ms.iconCellSelected]}
+                  onPress={() => setSelectedIcon(icon)}
+                >
+                  <Ionicons
+                    name={icon}
+                    size={22}
+                    color={selectedIcon === icon ? C.accentText : C.iconSecondary}
+                  />
+                </Pressable>
+              ))}
             </View>
+          </View>
 
-            <View style={ms.section}>
-              <Text style={ms.label}>ICON</Text>
-              <View style={ms.iconGrid}>
-                {ICON_OPTIONS.map((icon) => (
-                  <Pressable
-                    key={icon}
-                    style={[ms.iconCell, selectedIcon === icon && ms.iconCellSelected]}
-                    onPress={() => setSelectedIcon(icon)}
-                  >
-                    <Ionicons
-                      name={icon}
-                      size={22}
-                      color={selectedIcon === icon ? C.accentText : C.iconSecondary}
-                    />
-                  </Pressable>
-                ))}
-              </View>
+          <View style={ms.section}>
+            <Text style={ms.label}>DAYS</Text>
+            <View style={ms.daysRow}>
+              {ALL_DAYS.map((day) => (
+                <Pressable
+                  key={day}
+                  style={[ms.dayPill, selectedDays.includes(day) && ms.dayPillActive]}
+                  onPress={() => toggleDay(day)}
+                >
+                  <Text style={[ms.dayPillText, selectedDays.includes(day) && ms.dayPillTextActive]}>
+                    {DAY_LABELS[day]}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
-
-            <View style={ms.section}>
-              <Text style={ms.label}>DAYS</Text>
-              <View style={ms.daysRow}>
-                {ALL_DAYS.map((day) => (
-                  <Pressable
-                    key={day}
-                    style={[ms.dayPill, selectedDays.includes(day) && ms.dayPillActive]}
-                    onPress={() => toggleDay(day)}
-                  >
-                    <Text style={[ms.dayPillText, selectedDays.includes(day) && ms.dayPillTextActive]}>
-                      {DAY_LABELS[day]}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+          </View>
+        </KeyboardAwareScrollView>
+      </View>
     </Modal>
   );
 }
@@ -239,11 +240,12 @@ function makeModalStyles(C: ReturnType<typeof import("@/hooks/useTheme").useThem
     iconGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: 10,
+      justifyContent: "space-between",
+      rowGap: 10,
     },
     iconCell: {
-      width: 48,
-      height: 48,
+      width: "14.5%",
+      aspectRatio: 1,
       borderRadius: 12,
       backgroundColor: C.cardBg,
       borderWidth: 1,
