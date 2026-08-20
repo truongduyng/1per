@@ -19,7 +19,7 @@ import { useTheme } from "@/hooks/useTheme";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { desc, isNull } from "drizzle-orm";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   Animated,
@@ -216,6 +216,14 @@ export default function HomeScreen() {
       subscription.remove();
     };
   }, []);
+
+  // Settings is a pushed stack screen, not a background/foreground transition,
+  // so a lock-condition change there wouldn't otherwise reach this screen.
+  useFocusEffect(
+    React.useCallback(() => {
+      setLockCondition(appBlocker.getLockCondition());
+    }, []),
+  );
 
   const firstName = userProfile?.name?.split(" ")[0] ?? "there";
   const goalText = (todayFocus?.goal ?? "").trim();
@@ -1067,8 +1075,8 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       color: C.textPrimary,
     },
     lockSubtitle: {
-      fontSize: 13,
-      lineHeight: 18,
+      fontSize: 12,
+      lineHeight: 14,
       color: C.textTertiary,
     },
     lockAppRow: {
