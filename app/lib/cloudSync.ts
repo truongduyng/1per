@@ -41,12 +41,42 @@ export async function signInAndBackup() {
   await syncNow();
 }
 
+// First sign-in: restores an existing cloud backup for this Apple account if
+// there is one, otherwise backs up the local data as the initial snapshot.
+// Used by onboarding, where local data is fresh and safe to replace.
+export async function signInAndSync() {
+  const identity = await signInWithApple();
+  await setSessionToken(await createSyncSession(identity.identityToken));
+  const token = getSessionToken();
+  if (!token) throw new Error("Apple sign-in did not return a token.");
+  const remote = await downloadCloudSnapshot(token);
+  if (remote) {
+    await importSnapshot(remote as DataSnapshot);
+  } else {
+    await syncNow();
+  }
+  return { identity, restored: !!remote };
+}
+
 // Backs up with the existing session when signed in, only prompting Apple sign-in otherwise.
 export async function backupNow() {
   if (await hasCloudSession()) {
     await syncNow();
   } else {
     await signInAndBackup();
+  }
+}
+
+// Restores with the existing session when signed in, only prompting Apple sign-in otherwise.
+export async function restoreNow() {
+  if (await hasCloudSession()) {
+    const token = getSessionToken();
+    if (!token) throw new Error("Not signed in.");
+    const remote = await downloadCloudSnapshot(token);
+    if (!remote) throw new Error("No cloud backup exists for this Apple account.");
+    await importSnapshot(remote as DataSnapshot);
+  } else {
+    await signInAndRestore();
   }
 }
 
