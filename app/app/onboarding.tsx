@@ -4,16 +4,15 @@ import React, { useEffect } from "react";
 import {
   Animated,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import GradientBackground from "@/components/GradientBackground";
 import {
   AppTourScreen,
+  BackupStep,
   ChallengeSuggestionScreen,
   FastWinsScreen,
   FocusAreaScreen,
@@ -37,11 +36,9 @@ import {
   trackOnboardingEvent,
   useOnboarding,
 } from "@/hooks/useOnboarding";
-import { signInAndRestore } from "@/lib/cloudSync";
 
 export default function OnboardingScreen() {
   const s = makeStyles();
-  const [isRestoring, setIsRestoring] = React.useState(false);
   const {
     currentStep,
     fadeAnim,
@@ -77,17 +74,6 @@ export default function OnboardingScreen() {
     goNext();
   };
 
-  const restoreData = async () => {
-    setIsRestoring(true);
-    try {
-      await signInAndRestore();
-      router.replace("/(tabs)");
-    } catch (error) {
-      console.error("Failed to restore cloud data:", error);
-    } finally {
-      setIsRestoring(false);
-    }
-  };
 
   const toggleFocusArea = (area: string) => {
     setFocusAreas((current) => {
@@ -179,6 +165,8 @@ export default function OnboardingScreen() {
             onNext={advance}
           />
         );
+      case "backup":
+        return <BackupStep onNext={advance} />;
       case "paywall":
         return <PaywallStep onComplete={completeOnboarding} />;
     }
@@ -200,9 +188,6 @@ export default function OnboardingScreen() {
           <View style={s.progressTrack}>
             <ProgressBar step={currentStep + 1} total={TOTAL} compact />
           </View>
-          <TouchableOpacity onPress={restoreData} disabled={isRestoring}>
-            <Text style={s.restoreText}>{isRestoring ? "Restoring…" : "Restore"}</Text>
-          </TouchableOpacity>
         </View>
 
         <Animated.View style={[s.flex, { opacity: fadeAnim }]}>
@@ -242,11 +227,6 @@ function makeStyles() {
     },
     progressTrack: {
       flex: 1,
-    },
-    restoreText: {
-      color: palette.white70,
-      fontSize: 12,
-      fontWeight: "600",
     },
   });
 }

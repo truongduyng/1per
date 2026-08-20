@@ -10,3 +10,4 @@ export { TrustScreen } from "./TrustScreen";
 export { GoalInputScreen } from "./GoalInputScreen";
 export { AppTourScreen } from "./AppTourScreen";
 export { ChallengeSuggestionScreen } from "./ChallengeSuggestionScreen";
+export { BackupStep } from "./BackupStep";

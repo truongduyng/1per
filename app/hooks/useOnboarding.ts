@@ -26,6 +26,7 @@ export type StepType =
   | "notification"
   | "screentime"
   | "referral"
+  | "backup"
   | "paywall";
 
 export interface StepConfig {
@@ -46,6 +47,7 @@ export const STEPS: StepConfig[] = [
   { type: "notification" },
   { type: "screentime" },
   { type: "referral" },
+  { type: "backup" },
   { type: "paywall" },
 ];
 
