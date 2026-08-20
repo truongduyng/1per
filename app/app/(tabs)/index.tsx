@@ -420,6 +420,11 @@ export default function HomeScreen() {
     try {
       const selection = await appBlocker.getSelectionSummary();
       setBlockerSelection(selection);
+      // The shield only reflects the selection that was active the last
+      // time applyShield ran - if the selection changed (e.g. an app was
+      // removed) the old shield stays on that app until we clear it and
+      // re-apply against the new selection.
+      await appBlocker.clearShield();
       if (selection.hasSelection && !appLockUnlocked) {
         await appBlocker.applyShield();
         setBlockerStatus("Shield active");
