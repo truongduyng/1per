@@ -1,0 +1,13 @@
+diff --git a/node_modules/@kingstinct/expo-apple-targets/build/withXcodeChanges.js b/node_modules/@kingstinct/expo-apple-targets/build/withXcodeChanges.js
+index 95989d5..c4fa5d9 100644
+--- a/node_modules/@kingstinct/expo-apple-targets/build/withXcodeChanges.js
++++ b/node_modules/@kingstinct/expo-apple-targets/build/withXcodeChanges.js
+@@ -648,7 +648,7 @@ async function applyXcodeChanges(config, project, props) {
+     }
+     const targets = getExtensionTargets();
+     const productName = props.name;
+-    let targetToUpdate = (_a = targets.find((target) => target.props.productName === productName)) !== null && _a !== void 0 ? _a : targets[0];
++    let targetToUpdate = targets.find((target) => target.props.productName === productName);
+     if (targetToUpdate) {
+         console.log(`Target "${targetToUpdate.props.productName}" already exists, updating instead of creating a new one`);
+     }

@@ -3,7 +3,7 @@ import WidgetKit
 
 private let appGroup = "group.app.kadoze.yikudo"
 private let storageKey = "goalHabitsSnapshot"
-private let maxHabitsShown = 4
+private let maxHabitsShown = 3
 
 struct GoalHabitsWidgetHabit: Identifiable {
   let id: Int
@@ -81,17 +81,6 @@ struct GoalHabitsWidgetView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 6) {
-        Image(systemName: "target")
-          .font(.system(size: 13, weight: .bold, design: .rounded))
-          .foregroundStyle(Color("goalHabitsAccent"))
-        Text("TODAY'S FOCUS")
-          .font(.system(size: 12, weight: .heavy, design: .rounded))
-          .foregroundStyle(Color("goalHabitsMuted"))
-          .lineLimit(1)
-        Spacer()
-      }
-
       goalRow
 
       if !entry.habits.isEmpty {
@@ -135,7 +124,7 @@ struct GoalHabitsWidgetView: View {
 
   private func habitRow(_ habit: GoalHabitsWidgetHabit) -> some View {
     HStack(spacing: 8) {
-      Image(systemName: habit.done ? "checkmark.circle.fill" : "circle")
+      Image(systemName: "target")
         .font(.system(size: 15))
         .foregroundStyle(habit.done ? Color("goalHabitsAccent") : Color("goalHabitsMuted"))
 

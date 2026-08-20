@@ -10,7 +10,8 @@
     "lint": "expo lint",
     "bump-version": "node ./scripts/bump-version.js",
     "build": "eas build --platform ios --profile production --local",
-    "submit": "eas submit --platform ios --profile production"
+    "submit": "eas submit --platform ios --profile production",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/dom-webview": "~57.0.1",
@@ -73,6 +74,7 @@
     "@types/react": "~19.2.14",
     "eslint": "^9.35.0",
     "eslint-config-expo": "~57.0.0",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
   "private": true
