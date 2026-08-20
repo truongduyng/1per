@@ -63,7 +63,7 @@ function updateDefaultShield() {
       backgroundColor: SHIELD_BACKGROUND,
       title: "Not right now",
       titleColor: SHIELD_WHITE,
-      subtitle: "Finish your main task and daily habits first — then this can wait a little longer.",
+      subtitle: "Finish your main task and daily habits first - then this can wait a little longer.",
       subtitleColor: SHIELD_WHITE_MUTED,
       iconSystemName: "target",
       iconTint: SHIELD_ORANGE,

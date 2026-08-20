@@ -40,7 +40,7 @@ export const habitOps = {
   async create(data: NewHabit) {
     return await withInitializedDb(() => db.insert(habits).values(data).returning());
   },
-  // Active habits only — what the user is tracking right now.
+  // Active habits only - what the user is tracking right now.
   async getAll() {
     return await withInitializedDb(() =>
       db.select().from(habits)
@@ -180,7 +180,7 @@ export const challengeOps = {
     );
   },
 
-  // Includes quit/finished challenges — their habits and check-ins are still
+  // Includes quit/finished challenges - their habits and check-ins are still
   // part of the user's history.
   async getAllIncludingArchived() {
     return await withInitializedDb(() =>

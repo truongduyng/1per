@@ -23,7 +23,7 @@ const RECOMMENDATION_REASONS: Record<string, string> = {
   work: "Protects your attention and turns intention into a daily execution rhythm.",
   relations: "Creates more space to be present and consistent with the people around you.",
   creative: "Gives your ideas a dependable place in the day instead of waiting for inspiration.",
-  finance: "Strengthens consistency first—the skill that makes any money system easier to maintain.",
+  finance: "Strengthens consistency first-the skill that makes any money system easier to maintain.",
 };
 
 export function ChallengeSuggestionScreen({

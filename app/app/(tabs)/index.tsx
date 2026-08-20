@@ -1,11 +1,10 @@
 import GradientBackground from "@/components/GradientBackground";
-import { HabitCheckInModal, type HabitCheckInDraft } from "@/components/HabitCheckInModal";
+import { HomeHabitsSection } from "@/components/HomeHabitsSection";
 import {
   db,
   habits,
   habitCompletions,
   dailyFocus,
-  completionOps,
   dailyFocusOps,
 } from "@/lib/db";
 import {
@@ -14,7 +13,6 @@ import {
   syncDailyAffirmationWidget,
 } from "@/lib/dailyAffirmation";
 import { syncGoalHabitsWidget } from "@/lib/goalHabitsWidget";
-import { deleteHabitPhoto } from "@/lib/habitPhotos";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
@@ -42,7 +40,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DAY_NAMES } from "@/lib/performance";
 import { Fonts, palette } from "@/constants/theme";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { resolveIoniconName } from "@/lib/iconNames";
 import {
   APP_BLOCKER_SELECTION_ID,
   AppBlockerSelectionSheet,
@@ -168,46 +165,6 @@ export default function HomeScreen() {
 
   const progressOffset =
     PROGRESS_RING_CIRCUMFERENCE * (1 - todayProgress.ratio);
-
-  const [checkInHabitId, setCheckInHabitId] = useState<number | null>(null);
-
-  // Photo + reflection attached to today's check-in, keyed by habit.
-  const todayCheckIns = useMemo(() => {
-    const map: Record<number, { photoUri: string | null; note: string | null }> = {};
-    for (const c of allCompletions ?? []) {
-      if (c.date === todayKey) {
-        map[c.habitId] = { photoUri: c.photoUri ?? null, note: c.note ?? null };
-      }
-    }
-    return map;
-  }, [allCompletions, todayKey]);
-
-  const checkInHabit = useMemo(
-    () => todayHabits.find((habit) => habit.id === checkInHabitId) ?? null,
-    [todayHabits, checkInHabitId],
-  );
-
-  const openCheckIn = (habitId: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setCheckInHabitId(habitId);
-  };
-
-  const submitCheckIn = async (habitId: number, draft: HabitCheckInDraft) => {
-    const wasDone = doneIds.has(habitId);
-    await completionOps.markDone(habitId, today, {
-      photoUri: draft.photoUri,
-      note: draft.note,
-    });
-    if (!wasDone) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-  };
-
-  const undoCheckIn = async (habitId: number) => {
-    deleteHabitPhoto(todayCheckIns[habitId]?.photoUri);
-    await completionOps.markUndone(habitId, today);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
 
   const isEveningResetUnlocked = useMemo(
     () => __DEV__ || new Date().getHours() >= 21,
@@ -720,74 +677,13 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={s.section}>
-          <Text style={s.sectionLabel}>{"HABITS"}</Text>
-          <View style={s.card}>
-            {todayHabits.length === 0 ? (
-              <View style={s.emptyRow}>
-                <Text style={s.emptyText}>No habits scheduled for today</Text>
-              </View>
-            ) : (
-              todayHabits.map((habit, i) => {
-                const done = doneIds.has(habit.id);
-                return (
-                  <View key={habit.id}>
-                    {i > 0 && <View style={s.divider} />}
-                    <Pressable
-                      style={s.row}
-                      onPress={() => openCheckIn(habit.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={
-                        done
-                          ? `${habit.title}, done today. Open check-in`
-                          : `Check in ${habit.title}`
-                      }
-                    >
-                      <Ionicons
-                        name={resolveIoniconName(habit.icon, "star-outline")}
-                        size={22}
-                        color={C.iconSecondary}
-                        style={s.habitIcon}
-                      />
-                      <View style={s.rowInfo}>
-                        <Text style={[s.rowTitle, done && s.rowTitleDone]}>
-                          {habit.title}
-                        </Text>
-                        {habit.subtitle && (
-                          <Text style={s.rowSubtitle}>{habit.subtitle}</Text>
-                        )}
-                      </View>
-                      {todayCheckIns[habit.id]?.photoUri ? (
-                        <Ionicons
-                          name="image-outline"
-                          size={16}
-                          color={C.textQuaternary}
-                          style={s.checkInBadge}
-                        />
-                      ) : todayCheckIns[habit.id]?.note ? (
-                        <Ionicons
-                          name="chatbubble-ellipses-outline"
-                          size={16}
-                          color={C.textQuaternary}
-                          style={s.checkInBadge}
-                        />
-                      ) : null}
-                      <View style={[s.checkbox, done && s.checkboxDone]}>
-                        {done && (
-                          <Ionicons
-                            name="checkmark"
-                            size={13}
-                            color={palette.white}
-                          />
-                        )}
-                      </View>
-                    </Pressable>
-                  </View>
-                );
-              })
-            )}
-          </View>
-        </View>
+        <HomeHabitsSection
+          todayHabits={todayHabits}
+          allCompletions={allCompletions ?? []}
+          doneIds={doneIds}
+          today={today}
+          todayKey={todayKey}
+        />
 
         <View style={s.section}>
           <Text style={s.sectionLabel}>EVENING RESET</Text>
@@ -931,21 +827,6 @@ export default function HomeScreen() {
         </View>
       </KeyboardAwareScrollView>
 
-      {checkInHabit ? (
-        <HabitCheckInModal
-          key={`check-in-${checkInHabit.id}-${todayKey}`}
-          visible={checkInHabitId != null}
-          habitId={checkInHabit.id}
-          habitTitle={checkInHabit.title}
-          dateKey={todayKey}
-          isDone={doneIds.has(checkInHabit.id)}
-          initialPhotoUri={todayCheckIns[checkInHabit.id]?.photoUri ?? null}
-          initialNote={todayCheckIns[checkInHabit.id]?.note ?? null}
-          onClose={() => setCheckInHabitId(null)}
-          onSubmit={(draft) => submitCheckIn(checkInHabit.id, draft)}
-          onUndo={() => undoCheckIn(checkInHabit.id)}
-        />
-      ) : null}
     </View>
   );
 }
@@ -1361,47 +1242,6 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       color: C.textSecondary,
       lineHeight: 18,
     },
-
-    card: {
-      backgroundColor: C.cardBg,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: C.cardBorder,
-      overflow: "hidden",
-    },
-    divider: {
-      height: StyleSheet.hairlineWidth,
-      backgroundColor: C.divider,
-      marginHorizontal: 16,
-    },
-    row: {
-      flexDirection: "row",
-      alignItems: "center",
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      gap: 12,
-    },
-    habitIcon: { width: 28, textAlign: "center" },
-    rowInfo: { flex: 1 },
-    rowTitle: { fontSize: 15, fontWeight: "600", color: C.textPrimary },
-    rowTitleDone: { color: C.textTertiary, textDecorationLine: "line-through" },
-    rowSubtitle: { fontSize: 12, color: C.textQuaternary, marginTop: 2 },
-    checkInBadge: { marginRight: 10 },
-    checkbox: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 1.5,
-      borderColor: C.iconTertiary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    checkboxDone: {
-      backgroundColor: palette.orangeStrong,
-      borderColor: palette.orangeStrong,
-    },
-    emptyRow: { paddingVertical: 20, paddingHorizontal: 16 },
-    emptyText: { fontSize: 14, color: C.textQuaternary, textAlign: "center" },
 
     resetCard: {
       backgroundColor: "#05070A",

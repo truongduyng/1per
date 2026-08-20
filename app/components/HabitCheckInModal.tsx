@@ -1,6 +1,7 @@
 import { useTheme } from "@/hooks/useTheme";
 import { deleteHabitPhoto, persistHabitPhoto } from "@/lib/habitPhotos";
 import { Ionicons } from "@expo/vector-icons";
+import { BottomSheet, Host, RNHostView } from "@expo/ui";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
@@ -8,7 +9,6 @@ import {
   Alert,
   Image,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -30,8 +30,8 @@ interface Props {
   visible: boolean;
   habitId: number;
   habitTitle: string;
-  dateKey: string;               // 'YYYY-MM-DD' the check-in belongs to
-  isDone: boolean;               // already checked in → edit mode
+  dateKey: string; // 'YYYY-MM-DD' the check-in belongs to
+  isDone: boolean; // already checked in → edit mode
   initialPhotoUri?: string | null;
   initialNote?: string | null;
   onClose: () => void;
@@ -53,7 +53,9 @@ export function HabitCheckInModal({
 }: Props) {
   const C = useTheme();
   const insets = useSafeAreaInsets();
-  const [photoUri, setPhotoUri] = useState<string | null>(initialPhotoUri ?? null);
+  const [photoUri, setPhotoUri] = useState<string | null>(
+    initialPhotoUri ?? null,
+  );
   const [note, setNote] = useState(initialNote ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -131,7 +133,8 @@ export function HabitCheckInModal({
           text: "Undo check-in",
           style: "destructive",
           onPress: () => {
-            if (photoUri && photoUri !== originalPhotoUri) deleteHabitPhoto(photoUri);
+            if (photoUri && photoUri !== originalPhotoUri)
+              deleteHabitPhoto(photoUri);
             onUndo?.();
             onClose();
           },
@@ -143,119 +146,143 @@ export function HabitCheckInModal({
   const s = makeStyles(C);
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={handleClose}
-    >
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <Host>
+      <BottomSheet
+        isPresented={visible}
+        onDismiss={handleClose}
+        snapPoints={["half", "full"]}
       >
-        <View style={[s.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          <View style={s.handle} />
-          <View style={s.header}>
-            <Pressable onPress={handleClose} style={s.headerBtn}>
-              <Text style={s.cancelText}>Cancel</Text>
-            </Pressable>
-            <Text style={s.headerTitle} numberOfLines={1}>
-              {habitTitle}
-            </Text>
-            <Pressable
-              onPress={handleSave}
-              style={[s.headerBtn, s.saveBtn]}
-              disabled={saving}
-              accessibilityRole="button"
-              accessibilityLabel={isDone ? "Save check-in" : "Mark habit done"}
-            >
-              <Text style={[s.saveText, saving && s.saveTextDisabled]}>
-                {isDone ? "Save" : "Done"}
-              </Text>
-            </Pressable>
-          </View>
-
-          <ScrollView
-            style={s.scroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
+        <RNHostView>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
           >
-            <Text style={s.intro}>
-              {isDone
-                ? "Your check-in for today."
-                : "Add a photo and a note — both optional."}
-            </Text>
+            <View style={[s.sheet, { paddingBottom: insets.bottom + 24 }]}>
+              <View style={s.header}>
+                <Pressable onPress={handleClose} style={s.headerBtn}>
+                  <Text style={s.cancelText}>Cancel</Text>
+                </Pressable>
+                <Text style={s.headerTitle} numberOfLines={1}>
+                  {habitTitle}
+                </Text>
+                <Pressable
+                  onPress={handleSave}
+                  style={[s.headerBtn, s.saveBtn]}
+                  disabled={saving}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isDone ? "Save check-in" : "Mark habit done"
+                  }
+                >
+                  <Text style={[s.saveText, saving && s.saveTextDisabled]}>
+                    {isDone ? "Save" : "Done"}
+                  </Text>
+                </Pressable>
+              </View>
 
-            <View style={s.section}>
-              <Text style={s.label}>PHOTO</Text>
-              {photoUri ? (
-                <View style={s.photoWrap}>
-                  <Image source={{ uri: photoUri }} style={s.photo} resizeMode="cover" />
-                  <Pressable
-                    style={s.photoRemoveBtn}
-                    onPress={removePhoto}
-                    hitSlop={10}
-                    accessibilityRole="button"
-                    accessibilityLabel="Remove photo"
-                  >
-                    <Ionicons name="close" size={16} color={C.textPrimary} />
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={s.photoActions}>
-                  <Pressable
-                    style={s.photoBtn}
-                    onPress={() => pickPhoto("camera")}
-                    accessibilityRole="button"
-                    accessibilityLabel="Take a photo"
-                  >
-                    <Ionicons name="camera-outline" size={20} color={C.accentText} />
-                    <Text style={s.photoBtnText}>Camera</Text>
-                  </Pressable>
-                  <Pressable
-                    style={s.photoBtn}
-                    onPress={() => pickPhoto("library")}
-                    accessibilityRole="button"
-                    accessibilityLabel="Choose a photo from library"
-                  >
-                    <Ionicons name="images-outline" size={20} color={C.accentText} />
-                    <Text style={s.photoBtnText}>Library</Text>
-                  </Pressable>
-                </View>
-              )}
-            </View>
-
-            <View style={s.section}>
-              <Text style={s.label}>SELF-REFLECTION</Text>
-              <TextInput
-                style={s.noteInput}
-                placeholder="How did it go? What did you notice?"
-                placeholderTextColor={C.textQuaternary}
-                value={note}
-                onChangeText={setNote}
-                multiline
-                maxLength={NOTE_MAX_LENGTH}
-              />
-              <Text style={s.counter}>
-                {note.length}/{NOTE_MAX_LENGTH}
-              </Text>
-            </View>
-
-            {isDone && onUndo ? (
-              <Pressable
-                style={s.undoBtn}
-                onPress={handleUndo}
-                accessibilityRole="button"
-                accessibilityLabel="Undo check-in"
+              <ScrollView
+                style={s.scroll}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
-                <Ionicons name="arrow-undo-outline" size={18} color={C.textQuaternary} />
-                <Text style={s.undoBtnText}>Undo check-in</Text>
-              </Pressable>
-            ) : null}
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+                <Text style={s.intro}>
+                  {isDone
+                    ? "Your check-in for today."
+                    : "Add a photo and a note - both optional."}
+                </Text>
+
+                <View style={s.section}>
+                  <Text style={s.label}>PHOTO</Text>
+                  {photoUri ? (
+                    <View style={s.photoWrap}>
+                      <Image
+                        source={{ uri: photoUri }}
+                        style={s.photo}
+                        resizeMode="cover"
+                      />
+                      <Pressable
+                        style={s.photoRemoveBtn}
+                        onPress={removePhoto}
+                        hitSlop={10}
+                        accessibilityRole="button"
+                        accessibilityLabel="Remove photo"
+                      >
+                        <Ionicons
+                          name="close"
+                          size={16}
+                          color={C.textPrimary}
+                        />
+                      </Pressable>
+                    </View>
+                  ) : (
+                    <View style={s.photoActions}>
+                      <Pressable
+                        style={s.photoBtn}
+                        onPress={() => pickPhoto("camera")}
+                        accessibilityRole="button"
+                        accessibilityLabel="Take a photo"
+                      >
+                        <Ionicons
+                          name="camera-outline"
+                          size={20}
+                          color={C.accentText}
+                        />
+                        <Text style={s.photoBtnText}>Camera</Text>
+                      </Pressable>
+                      <Pressable
+                        style={s.photoBtn}
+                        onPress={() => pickPhoto("library")}
+                        accessibilityRole="button"
+                        accessibilityLabel="Choose a photo from library"
+                      >
+                        <Ionicons
+                          name="images-outline"
+                          size={20}
+                          color={C.accentText}
+                        />
+                        <Text style={s.photoBtnText}>Library</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+
+                <View style={s.section}>
+                  <Text style={s.label}>SELF-REFLECTION</Text>
+                  <TextInput
+                    style={s.noteInput}
+                    placeholder="How did it go? What did you notice?"
+                    placeholderTextColor={C.textQuaternary}
+                    value={note}
+                    onChangeText={setNote}
+                    multiline
+                    maxLength={NOTE_MAX_LENGTH}
+                  />
+                  <Text style={s.counter}>
+                    {note.length}/{NOTE_MAX_LENGTH}
+                  </Text>
+                </View>
+
+                {isDone && onUndo ? (
+                  <Pressable
+                    style={s.undoBtn}
+                    onPress={handleUndo}
+                    accessibilityRole="button"
+                    accessibilityLabel="Undo check-in"
+                  >
+                    <Ionicons
+                      name="arrow-undo-outline"
+                      size={18}
+                      color={C.textQuaternary}
+                    />
+                    <Text style={s.undoBtnText}>Undo check-in</Text>
+                  </Pressable>
+                ) : null}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </RNHostView>
+      </BottomSheet>
+    </Host>
   );
 }
 
@@ -266,14 +293,6 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       backgroundColor: C.background,
       paddingHorizontal: 20,
       paddingTop: 12,
-    },
-    handle: {
-      width: 36,
-      height: 4,
-      borderRadius: 2,
-      backgroundColor: C.cardBorder,
-      alignSelf: "center",
-      marginBottom: 16,
     },
     header: {
       flexDirection: "row",

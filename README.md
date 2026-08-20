@@ -4,7 +4,7 @@
 
 ## 1. Product Vision & Objective
 
-To help people get 1% better every day through one clear daily goal, a small set of keystone habits, and protected focus time. The application empowers users to achieve lasting change through small, consistent, daily actions rather than overwhelming overhauls — while actively defending their attention from doomscrolling.
+To help people get 1% better every day through one clear daily goal, a small set of keystone habits, and protected focus time. The application empowers users to achieve lasting change through small, consistent, daily actions rather than overwhelming overhauls - while actively defending their attention from doomscrolling.
 
 ## 2. Problem Statement
 
@@ -18,7 +18,7 @@ Professionals, solopreneurs, and continuous learners who want a distraction-free
 
 * **UI/UX:** Minimalist, distraction-free interface utilizing a charcoal and burnt orange palette to reduce eye strain while providing clear visual hierarchy. Dark theme by default.
 * **Framework:** Cross-platform mobile development (React Native / Expo); iOS is the primary shipping platform.
-* **Data:** Offline-first — all user data lives on-device (SQLite). No accounts, no sync.
+* **Data:** Offline-first - all user data lives on-device (SQLite). No accounts, no sync.
 * **Backend:** A lightweight Cloudflare Worker (D1 + Workers AI) used only for AI-generated daily affirmations and anonymous onboarding analytics. The app must remain fully functional with no network.
 * **Monetization:** RevenueCat subscription (annual) and lifetime purchase, presented as the final onboarding step.
 
@@ -44,7 +44,7 @@ Professionals, solopreneurs, and continuous learners who want a distraction-free
 
 ### 5.4. Evening Reset
 
-* **Guided Wind-Down:** A timed three-step ritual — clean your space, clean your mind, plan for tomorrow.
+* **Guided Wind-Down:** A timed three-step ritual - clean your space, clean your mind, plan for tomorrow.
 * **Auto-Reflection:** The app builds a summary and a pattern insight from the day's goal and habit completions.
 
 ### 5.5. Doomscroll App Blocker (iOS)
@@ -57,7 +57,7 @@ Professionals, solopreneurs, and continuous learners who want a distraction-free
 
 ### 5.7. Time Capsule
 
-* **Letter to Future Self:** The user writes a letter sealed for 30/90+ days alongside a snapshot of their current streak, completions, bounce-back rate, and mood — revealed when the date arrives.
+* **Letter to Future Self:** The user writes a letter sealed for 30/90+ days alongside a snapshot of their current streak, completions, bounce-back rate, and mood - revealed when the date arrives.
 
 ### 5.8. Conversion-Focused Onboarding
 
@@ -87,7 +87,7 @@ Professionals, solopreneurs, and continuous learners who want a distraction-free
 
 1. **Trigger:** User opens the Evening Reset in the evening.
 2. **Action:** User steps through the timed ritual: clean your space, clean your mind, plan for tomorrow.
-3. **System Response:** The app presents an auto-built reflection — what happened today and the pattern it reveals.
+3. **System Response:** The app presents an auto-built reflection - what happened today and the pattern it reveals.
 4. **Resolution:** User sets tomorrow's intention, completing the daily loop.
 
 ### Flow 4: Blocking Doomscroll Apps

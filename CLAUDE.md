@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Two independent projects:
 
-- `app/` — the Expo mobile app (npm)
-- `worker/` — Cloudflare Worker backend (D1 + Workers AI) for onboarding analytics and AI-generated affirmations
+- `app/` - the Expo mobile app (npm)
+- `worker/` - Cloudflare Worker backend (D1 + Workers AI) for onboarding analytics and AI-generated affirmations
 
 Naming: the product is **1Per**, but the internal slug/bundle is `kadoze` (`app.kadoze.yikudo`). `README.md` is the PRD describing the current product.
 
@@ -40,9 +40,9 @@ There is no test suite configured.
 
 If Metro reports a missing native module (e.g. `ExpoAsset`, `ExponentConstants`) after a dependency bump, the compiled native app is out of sync with `package.json`. Fix order:
 
-1. Confirm you're opening the **development build**, not Expo Go — Expo Go bundles a fixed SDK and cannot have project-specific native modules. In the `expo start` terminal, press `s` to ensure "Using development build" is shown, then `i`.
+1. Confirm you're opening the **development build**, not Expo Go - Expo Go bundles a fixed SDK and cannot have project-specific native modules. In the `expo start` terminal, press `s` to ensure "Using development build" is shown, then `i`.
 2. `cd app/ios && pod install`, then rebuild (`npm run ios`).
-3. If the module is still missing from the compiled binary after that (check with `otool -L`/`nm` on the built `.app`, or an empty `Pods/<ModuleName>` source directory alongside a populated `Target Support Files/<ModuleName>`), CocoaPods' install is corrupted — remove `ios/Pods`, `ios/Podfile.lock`, and the stale `~/Library/Developer/Xcode/DerivedData/1Per-*` folder, then `pod install` and rebuild from scratch.
+3. If the module is still missing from the compiled binary after that (check with `otool -L`/`nm` on the built `.app`, or an empty `Pods/<ModuleName>` source directory alongside a populated `Target Support Files/<ModuleName>`), CocoaPods' install is corrupted - remove `ios/Pods`, `ios/Podfile.lock`, and the stale `~/Library/Developer/Xcode/DerivedData/1Per-*` folder, then `pod install` and rebuild from scratch.
 
 ## Architecture Overview
 
@@ -99,7 +99,7 @@ constants/
 
 ### Apple targets (`app/targets/`)
 
-Built with `@kingstinct/expo-apple-targets` (config in each target's `expo-target.config.js`; regenerated into `ios/` by prebuild — don't hand-edit the generated Xcode project). Note: `@bacons/apple-targets` (the actively maintained successor at [evanbacon/expo-apple-targets](https://github.com/evanbacon/expo-apple-targets)) cannot be adopted here without dropping `react-native-device-activity`'s Screen Time targets — both packages register an identically-named internal Xcode-project config-plugin mod (`xcodeProjectBeta2`), so having both active as plugins always collides during prebuild, regardless of directory scoping. `react-native-device-activity` still depends on `@kingstinct/expo-apple-targets` internally, so this app stays on it for all targets.
+Built with `@kingstinct/expo-apple-targets` (config in each target's `expo-target.config.js`; regenerated into `ios/` by prebuild - don't hand-edit the generated Xcode project). Note: `@bacons/apple-targets` (the actively maintained successor at [evanbacon/expo-apple-targets](https://github.com/evanbacon/expo-apple-targets)) cannot be adopted here without dropping `react-native-device-activity`'s Screen Time targets - both packages register an identically-named internal Xcode-project config-plugin mod (`xcodeProjectBeta2`), so having both active as plugins always collides during prebuild, regardless of directory scoping. `react-native-device-activity` still depends on `@kingstinct/expo-apple-targets` internally, so this app stays on it for all targets.
 
 - `DailyAffirmationWidget` - WidgetKit home-screen widget. The app writes the day's affirmation into the App Group (`group.app.kadoze.yikudo`) via `ExtensionStorage` in `lib/dailyAffirmation.ts`; the Swift widget reads it.
 - `ActivityMonitorExtension`, `ShieldAction`, `ShieldConfiguration` - Screen Time / FamilyControls extensions backing the doomscroll app blocker (`lib/appBlocker.ts`, selection id `kadoze-doomscroll-apps`).

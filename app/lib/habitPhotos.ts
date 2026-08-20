@@ -1,7 +1,7 @@
 import { Directory, File, Paths } from 'expo-file-system';
 
 // Check-in photos are copied out of the picker's cache into the app's document
-// directory so they survive the OS clearing caches. They stay on-device — like
+// directory so they survive the OS clearing caches. They stay on-device - like
 // every other piece of user data in this app, nothing is uploaded.
 const PHOTO_DIR_NAME = 'habit-photos';
 

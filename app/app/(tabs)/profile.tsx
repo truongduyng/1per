@@ -326,7 +326,7 @@ export default function ProfileScreen() {
         return b.done - a.done;
       });
 
-    // Streaks run up to today, so an archived habit can only score 0 here — the
+    // Streaks run up to today, so an archived habit can only score 0 here - the
     // max is effectively over active habits either way.
     const longestHabitStreak = perHabit.length
       ? Math.max(...perHabit.map((item) => item.streak))
