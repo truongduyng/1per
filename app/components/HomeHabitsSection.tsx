@@ -122,13 +122,6 @@ export function HomeHabitsSection({
                         color={C.textQuaternary}
                         style={s.checkInBadge}
                       />
-                    ) : checkIn?.note ? (
-                      <Ionicons
-                        name="chatbubble-ellipses-outline"
-                        size={16}
-                        color={C.textQuaternary}
-                        style={s.checkInBadge}
-                      />
                     ) : null}
                     <View style={[s.checkbox, done && s.checkboxDone]}>
                       {done && <Ionicons name="checkmark" size={13} color={C.textInverse} />}
