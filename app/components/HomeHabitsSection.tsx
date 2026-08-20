@@ -64,6 +64,15 @@ export function HomeHabitsSection({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const handleHabitPress = (habitId: number, isDone: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (isDone) {
+      void undoCheckIn(habitId);
+      return;
+    }
+    setCheckInHabitId(habitId);
+  };
+
   const s = makeStyles(C);
 
   return (
@@ -84,14 +93,11 @@ export function HomeHabitsSection({
                   {index > 0 && <View style={s.divider} />}
                   <Pressable
                     style={s.row}
-                    onPress={() => {
-                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                      setCheckInHabitId(habit.id);
-                    }}
+                    onPress={() => handleHabitPress(habit.id, done)}
                     accessibilityRole="button"
                     accessibilityLabel={
                       done
-                        ? `${habit.title}, done today. Open check-in`
+                        ? `${habit.title}, done today. Undo check-in`
                         : `Check in ${habit.title}`
                     }
                   >
