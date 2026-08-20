@@ -26,7 +26,7 @@ import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useReminderManager } from "@/hooks/useReminderManager";
 import { appBlocker, type AppLockCondition } from "@/lib/appBlocker";
 import { cancelAllNotifications } from "@/lib/notifications";
-import { signInAndBackup } from "@/lib/cloudSync";
+import { backupNow, getLastBackupAt } from "@/lib/cloudSync";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
 const LOCK_CONDITION_OPTIONS: { value: AppLockCondition; label: string }[] = [
@@ -46,11 +46,13 @@ export default function SettingsScreen() {
   const { hasActiveSubscription } = useRevenueCat();
   const [isResetting, setIsResetting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastBackupAt, setLastBackupAt] = useState(() => getLastBackupAt());
 
   const handleCloudSync = async () => {
     setIsSyncing(true);
     try {
-      await signInAndBackup();
+      await backupNow();
+      setLastBackupAt(getLastBackupAt());
       Alert.alert("Backup ready", "Your data is linked to your Apple account and will be available after reinstall.");
     } catch (error) {
       console.error("Failed to sync cloud data:", error);
@@ -59,6 +61,10 @@ export default function SettingsScreen() {
       setIsSyncing(false);
     }
   };
+
+  const lastBackupCopy = lastBackupAt
+    ? `Last backup: ${lastBackupAt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}`
+    : "Sign in with Apple to keep your data after reinstalling.";
 
   const openExternalUrl = async (url: string) => {
     const supported = await Linking.canOpenURL(url);
@@ -495,7 +501,7 @@ export default function SettingsScreen() {
               <View style={s.actionTextBlock}>
                 <Text selectable style={s.rowLabel}>{isSyncing ? "Backing up…" : "Back up and restore data"}</Text>
                 <Text selectable style={s.rowCopy}>
-                  Sign in with Apple to keep your data after reinstalling.
+                  {lastBackupCopy}
                 </Text>
               </View>
               <Text selectable style={s.chevron}>›</Text>

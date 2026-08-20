@@ -153,24 +153,29 @@ export function HabitCheckInModal({
         <RNHostView>
           <View style={s.sheet}>
             <View style={s.header}>
-              <Pressable onPress={handleClose} style={s.headerBtn}>
-                <Text style={s.cancelText}>Cancel</Text>
+              <Pressable
+                onPress={handleClose}
+                style={s.iconBtn}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel"
+              >
+                <Ionicons name="close" size={20} color={C.textSecondary} />
               </Pressable>
               <Text style={s.headerTitle} numberOfLines={1}>
                 {habitTitle}
               </Text>
               <Pressable
                 onPress={handleSave}
-                style={[s.headerBtn, s.saveBtn]}
+                style={[s.iconBtn, s.saveIconBtn, saving && s.saveIconBtnDisabled]}
+                hitSlop={8}
                 disabled={saving}
                 accessibilityRole="button"
                 accessibilityLabel={
                   isDone ? "Save check-in" : "Mark habit done"
                 }
               >
-                <Text style={[s.saveText, saving && s.saveTextDisabled]}>
-                  {isDone ? "Save" : "Done"}
-                </Text>
+                <Ionicons name="checkmark" size={20} color={C.accentText} />
               </Pressable>
             </View>
 
@@ -299,11 +304,21 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       fontWeight: "700",
       color: C.textPrimary,
     },
-    headerBtn: { minWidth: 60 },
-    cancelText: { fontSize: 15, color: C.textSecondary },
-    saveBtn: { alignItems: "flex-end" },
-    saveText: { fontSize: 15, fontWeight: "700", color: C.accentText },
-    saveTextDisabled: { color: C.textQuaternary },
+    iconBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: C.cardBg,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+    },
+    saveIconBtn: {
+      backgroundColor: C.accentBg,
+      borderColor: C.accentBorder,
+    },
+    saveIconBtnDisabled: { opacity: 0.5 },
     scroll: { flex: 1 },
     intro: {
       fontSize: 13,
