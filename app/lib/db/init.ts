@@ -144,6 +144,7 @@ export async function initializeDatabase() {
         goal TEXT NOT NULL DEFAULT '',
         focus_minutes INTEGER NOT NULL DEFAULT 0,
         completed_at INTEGER,
+        video_uri TEXT,
         created_at INTEGER NOT NULL DEFAULT (unixepoch()),
         updated_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
@@ -169,6 +170,14 @@ export async function initializeDatabase() {
       expoDb.execSync(`
         ALTER TABLE daily_focus
         ADD COLUMN evening_reset_completed_at INTEGER;
+      `);
+    }
+
+    const hasVideoUri = dailyFocusColumns.some((column) => column.name === 'video_uri');
+    if (!hasVideoUri) {
+      expoDb.execSync(`
+        ALTER TABLE daily_focus
+        ADD COLUMN video_uri TEXT;
       `);
     }
 

@@ -1,13 +1,30 @@
 import GradientBackground from "@/components/GradientBackground";
-import { db, habitCompletions, habits } from "@/lib/db";
+import { dailyFocus, db, habitCompletions, habits } from "@/lib/db";
 import { resolveIoniconName } from "@/lib/iconNames";
 import { useTheme } from "@/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { desc, isNotNull, or } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import React, { useMemo } from "react";
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import * as Sharing from "expo-sharing";
+
+type TimelineItem =
+  | { kind: "habit"; id: string; createdAt: number; entry: typeof habitCompletions.$inferSelect }
+  | { kind: "focus"; id: string; createdAt: number; entry: typeof dailyFocus.$inferSelect };
+
+async function openFocusVideo(uri: string) {
+  try {
+    if (await Sharing.isAvailableAsync()) {
+      await Sharing.shareAsync(uri, { mimeType: "video/mp4", dialogTitle: "Your 1Per focus video" });
+      return;
+    }
+  } catch {
+    // fall through to error alert below
+  }
+  Alert.alert("Can't open video", "This focus video is no longer available on your device.");
+}
 
 function parseDateKey(key: string): Date {
   const [year, month, day] = key.split("-").map(Number);
@@ -39,6 +56,13 @@ export default function JournalScreen() {
       )
       .orderBy(desc(habitCompletions.date), desc(habitCompletions.createdAt)),
   );
+  const { data: focusVideos } = useLiveQuery(
+    db
+      .select()
+      .from(dailyFocus)
+      .where(isNotNull(dailyFocus.videoUri))
+      .orderBy(desc(dailyFocus.date)),
+  );
 
   const habitById = useMemo(() => {
     const map = new Map<number, (typeof habits.$inferSelect)>();
@@ -47,14 +71,31 @@ export default function JournalScreen() {
   }, [allHabits]);
 
   const sections = useMemo(() => {
-    const grouped = new Map<string, typeof entries>();
+    const grouped = new Map<string, TimelineItem[]>();
     for (const entry of entries ?? []) {
       const list = grouped.get(entry.date) ?? [];
-      list.push(entry);
+      list.push({
+        kind: "habit",
+        id: `habit-${entry.id}`,
+        createdAt: entry.createdAt?.getTime() ?? 0,
+        entry,
+      });
       grouped.set(entry.date, list);
     }
-    return Array.from(grouped.entries());
-  }, [entries]);
+    for (const entry of focusVideos ?? []) {
+      const list = grouped.get(entry.date) ?? [];
+      list.push({
+        kind: "focus",
+        id: `focus-${entry.id}`,
+        createdAt: entry.updatedAt?.getTime() ?? 0,
+        entry,
+      });
+      grouped.set(entry.date, list);
+    }
+    const dated = Array.from(grouped.entries()).sort(([a], [b]) => (a < b ? 1 : -1));
+    for (const [, items] of dated) items.sort((a, b) => b.createdAt - a.createdAt);
+    return dated;
+  }, [entries, focusVideos]);
 
   const s = makeStyles(C);
 
@@ -70,7 +111,7 @@ export default function JournalScreen() {
       >
         <Text style={s.title}>Journal</Text>
         <Text style={s.subtitle}>
-          Photos and reflections from your check-ins.
+          Photos, reflections, and focus videos from your days.
         </Text>
 
         {sections.length === 0 ? (
@@ -78,7 +119,8 @@ export default function JournalScreen() {
             <Ionicons name="book-outline" size={28} color={C.iconTertiary} />
             <Text style={s.emptyTitle}>No entries yet</Text>
             <Text style={s.emptyBody}>
-              Add a photo or note when you check in on a habit to see it here.
+              Add a photo or note at check-in, or finish a focus session, to
+              see it here.
             </Text>
           </View>
         ) : (
@@ -90,12 +132,57 @@ export default function JournalScreen() {
                   <Text style={s.sectionLabel}>
                     {formatSectionDate(date).toUpperCase()}
                   </Text>
-                  {(dayEntries ?? []).map((entry, entryIndex) => {
-                    const habit = habitById.get(entry.habitId);
+                  {dayEntries.map((item, entryIndex) => {
                     const isLastEntry =
-                      isLastSection && entryIndex === (dayEntries ?? []).length - 1;
+                      isLastSection && entryIndex === dayEntries.length - 1;
+
+                    if (item.kind === "focus") {
+                      const { entry } = item;
+                      return (
+                        <View key={item.id} style={s.timelineRow}>
+                          <View style={s.timelineRail}>
+                            <View style={s.timelineNode}>
+                              <Ionicons
+                                name="videocam"
+                                size={14}
+                                color={C.accentText}
+                              />
+                            </View>
+                            {!isLastEntry && <View style={s.timelineLine} />}
+                          </View>
+                          <View style={s.entryCard}>
+                            <View style={s.entryHeader}>
+                              <Text style={s.entryTitle} numberOfLines={1}>
+                                Focus session
+                              </Text>
+                              {entry.focusMinutes > 0 ? (
+                                <Text style={s.entryMeta}>
+                                  {entry.focusMinutes} min
+                                </Text>
+                              ) : null}
+                            </View>
+                            {entry.goal ? (
+                              <Text style={s.entryNote}>{entry.goal}</Text>
+                            ) : null}
+                            <Pressable
+                              style={s.videoThumb}
+                              onPress={() => void openFocusVideo(entry.videoUri!)}
+                              accessibilityRole="button"
+                              accessibilityLabel="Play focus session video"
+                            >
+                              <View style={s.videoPlayButton}>
+                                <Ionicons name="play" size={22} color={C.textPrimary} />
+                              </View>
+                            </Pressable>
+                          </View>
+                        </View>
+                      );
+                    }
+
+                    const { entry } = item;
+                    const habit = habitById.get(entry.habitId);
                     return (
-                      <View key={entry.id} style={s.timelineRow}>
+                      <View key={item.id} style={s.timelineRow}>
                         <View style={s.timelineRail}>
                           <View style={s.timelineNode}>
                             <Ionicons
@@ -210,6 +297,11 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       fontWeight: "700",
       color: C.textPrimary,
     },
+    entryMeta: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: C.textTertiary,
+    },
     entryPhoto: {
       width: "100%",
       height: 220,
@@ -219,6 +311,24 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       fontSize: 14,
       lineHeight: 20,
       color: C.textSecondary,
+    },
+    videoThumb: {
+      width: "100%",
+      height: 220,
+      borderRadius: 12,
+      backgroundColor: C.inputBg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    videoPlayButton: {
+      width: 52,
+      height: 52,
+      borderRadius: 26,
+      backgroundColor: "rgba(0,0,0,0.35)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.24)",
+      alignItems: "center",
+      justifyContent: "center",
     },
     emptyState: {
       alignItems: "center",
