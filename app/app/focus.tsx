@@ -192,6 +192,7 @@ export default function FocusScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await persistElapsedFocusTime(true);
     await stopCameraRecording();
+    let composedVideoUri: string | undefined;
     if (recordedSegmentsRef.current.length > 0) {
       const logo = Asset.fromModule(require("@/assets/images/new_logo_transparent.png"));
       await logo.downloadAsync();
@@ -203,17 +204,20 @@ export default function FocusScreen() {
           logoUri: logo.localUri ?? logo.uri,
           durationSeconds: FOCUS_DURATION_SECONDS,
         });
+        composedVideoUri = composedVideoPath.startsWith("file://")
+          ? composedVideoPath
+          : `file://${composedVideoPath}`;
         if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(
-            composedVideoPath.startsWith("file://") ? composedVideoPath : `file://${composedVideoPath}`,
-            { mimeType: "video/mp4", dialogTitle: "Share your 1Per focus video" }
-          );
+          await Sharing.shareAsync(composedVideoUri, {
+            mimeType: "video/mp4",
+            dialogTitle: "Share your 1Per focus video",
+          });
         }
       } catch {
         // The raw segment remains available if export fails.
       }
     }
-    await dailyFocusOps.markComplete();
+    await dailyFocusOps.markComplete(composedVideoUri);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };

@@ -61,6 +61,7 @@ export const dailyFocus = sqliteTable('daily_focus', {
   goal: text('goal').notNull().default(''),
   focusMinutes: integer('focus_minutes').notNull().default(0),
   completedAt: integer('completed_at', { mode: 'timestamp' }),
+  videoUri: text('video_uri'),                   // local file path of the day's composed focus session video
   eveningResetCompletedAt: integer('evening_reset_completed_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),

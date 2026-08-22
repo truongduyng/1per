@@ -294,7 +294,7 @@ export const dailyFocusOps = {
     );
   },
 
-  async markComplete() {
+  async markComplete(videoUri?: string) {
     const key = getLocalDateString(new Date());
     return await withInitializedDb(() =>
       db.insert(dailyFocus)
@@ -302,10 +302,15 @@ export const dailyFocusOps = {
           date: key,
           completedAt: new Date(),
           updatedAt: new Date(),
+          ...(videoUri ? { videoUri } : {}),
         })
         .onConflictDoUpdate({
           target: [dailyFocus.date],
-          set: { completedAt: new Date(), updatedAt: new Date() },
+          set: {
+            completedAt: new Date(),
+            updatedAt: new Date(),
+            ...(videoUri ? { videoUri } : {}),
+          },
         })
         .returning()
     );
