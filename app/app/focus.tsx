@@ -8,13 +8,17 @@ import { dailyFocus, dailyFocusOps, db } from "@/lib/db";
 import { getLocalDateString } from "@/lib/timezone";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { eq } from "drizzle-orm";
+import { Asset } from "expo-asset";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
+import * as Sharing from "expo-sharing";
 import { router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AppState, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Svg, { Circle } from "react-native-svg";
+import { OnePerVideoComposer } from "@/modules/one-per-video-composer";
 
 const RING_SIZE = 220;
 const STROKE_WIDTH = 10;
@@ -34,7 +38,13 @@ export default function FocusScreen() {
   const colorScheme = useColorScheme();
   const isLight = colorScheme === "light";
   const [remainingSeconds, setRemainingSeconds] = useState(FOCUS_DURATION_SECONDS);
-  const [isRunning, setIsRunning] = useState(true);
+  const [isRunning, setIsRunning] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [videoSpeed, setVideoSpeed] = useState(1);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
+  const recordingPromiseRef = useRef<Promise<{ uri: string } | undefined> | undefined>(undefined);
+  const recordedSegmentsRef = useRef<string[]>([]);
   const unsavedElapsedSecondsRef = useRef(0);
   const didCompleteSessionRef = useRef(false);
   const { data: focusRows } = useLiveQuery(
@@ -42,12 +52,48 @@ export default function FocusScreen() {
   );
   usePreventScreenSleep(isRunning && remainingSeconds > 0, "kadoze-focus-room");
 
+  const stopCameraRecording = async () => {
+    if (!isRecording) return;
+    cameraRef.current?.stopRecording();
+    const recording = await recordingPromiseRef.current?.catch(() => undefined);
+    recordingPromiseRef.current = undefined;
+    setIsRecording(false);
+    if (recording?.uri) recordedSegmentsRef.current.push(recording.uri);
+    return recording?.uri;
+  };
+
+  const startCameraRecording = async () => {
+    if (!cameraPermission?.granted) {
+      const permission = await requestCameraPermission();
+      if (!permission.granted) return false;
+    }
+    if (!cameraRef.current || isRecording) return true;
+
+    setIsRecording(true);
+    const recording = cameraRef.current.recordAsync({ maxDuration: 60 * 60 });
+    recordingPromiseRef.current = recording;
+    void recording.then(() => {
+      recordingPromiseRef.current = undefined;
+      setIsRecording(false);
+    }).catch(() => {
+      recordingPromiseRef.current = undefined;
+      setIsRecording(false);
+    });
+    return true;
+  };
+
   const hasGoal = useMemo(() => Boolean(focusRows?.[0]?.goal?.trim()), [focusRows]);
 
   const goalText = useMemo(() => {
     const goal = focusRows?.[0]?.goal?.trim();
     return goal || "Set your main goal first";
   }, [focusRows]);
+
+  useEffect(() => {
+    if (isRunning && cameraPermission?.granted && !isRecording) {
+      void startCameraRecording();
+    }
+  }, [cameraPermission?.granted, isRecording, isRunning]);
 
   useEffect(() => {
     if (!isRunning || remainingSeconds <= 0) return;
@@ -85,6 +131,8 @@ export default function FocusScreen() {
     if (remainingSeconds <= 0 && !didCompleteSessionRef.current) {
       didCompleteSessionRef.current = true;
       void persistElapsedFocusTime(true);
+      void stopCameraRecording();
+      setIsRunning(false);
     }
   }, [remainingSeconds]);
 
@@ -98,12 +146,20 @@ export default function FocusScreen() {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState !== "active") {
         void persistElapsedFocusTime(true);
+        void stopCameraRecording();
+        setIsRunning(false);
       }
     });
 
     return () => {
       subscription.remove();
       void persistElapsedFocusTime(true);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cameraRef.current?.stopRecording();
     };
   }, []);
 
@@ -116,10 +172,14 @@ export default function FocusScreen() {
       didCompleteSessionRef.current = false;
       setRemainingSeconds(FOCUS_DURATION_SECONDS);
       setIsRunning(true);
+      void startCameraRecording();
       return;
     }
     if (isRunning) {
       void persistElapsedFocusTime();
+      void stopCameraRecording();
+    } else {
+      void startCameraRecording();
     }
     setIsRunning((current) => !current);
   };
@@ -131,6 +191,28 @@ export default function FocusScreen() {
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     await persistElapsedFocusTime(true);
+    await stopCameraRecording();
+    if (recordedSegmentsRef.current.length > 0) {
+      const logo = Asset.fromModule(require("@/assets/images/new_logo_transparent.png"));
+      await logo.downloadAsync();
+      try {
+        const composedVideoPath = await OnePerVideoComposer.composeAsync({
+          videoUris: recordedSegmentsRef.current,
+          speed: videoSpeed,
+          goal: goalText,
+          logoUri: logo.localUri ?? logo.uri,
+          durationSeconds: FOCUS_DURATION_SECONDS,
+        });
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(
+            composedVideoPath.startsWith("file://") ? composedVideoPath : `file://${composedVideoPath}`,
+            { mimeType: "video/mp4", dialogTitle: "Share your 1Per focus video" }
+          );
+        }
+      } catch {
+        // The raw segment remains available if export fails.
+      }
+    }
     await dailyFocusOps.markComplete();
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
@@ -152,8 +234,11 @@ export default function FocusScreen() {
           headerLeft: () => (
             <Pressable
               onPress={() => {
-                void persistElapsedFocusTime(true);
-                router.back();
+                void (async () => {
+                  await persistElapsedFocusTime(true);
+                  await stopCameraRecording();
+                  router.back();
+                })();
               }}
               hitSlop={10}
             >
@@ -176,6 +261,16 @@ export default function FocusScreen() {
           ),
         }}
       />
+      {cameraPermission?.granted ? (
+        <CameraView
+          ref={cameraRef}
+          style={s.camera}
+          facing="front"
+          mode="video"
+          mirror
+        />
+      ) : null}
+      <View style={s.cameraShade} pointerEvents="none" />
       <GradientBackground />
       <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
         <Aurora
@@ -189,6 +284,8 @@ export default function FocusScreen() {
         <View style={s.content}>
           <Text style={s.goal}>{goalText}</Text>
           <Text style={s.subtitle}>Stay focused. Do one thing.</Text>
+
+          {isRecording ? <Text style={s.recordingLabel}>● Recording</Text> : null}
 
           <View style={s.ringWrap}>
             <Svg width={RING_SIZE} height={RING_SIZE} style={s.ringSvg}>
@@ -226,6 +323,20 @@ export default function FocusScreen() {
               color={palette.white}
             />
           </Pressable>
+          <Text style={s.timerHint}>
+            {isRunning ? "Pause timer and recording" : "Start timer and recording"}
+          </Text>
+          <View style={s.speedRow}>
+            {[1, 2, 4].map((speed) => (
+              <Pressable
+                key={speed}
+                onPress={() => setVideoSpeed(speed)}
+                style={[s.speedButton, videoSpeed === speed && s.speedButtonActive]}
+              >
+                <Text style={[s.speedText, videoSpeed === speed && s.speedTextActive]}>{speed}×</Text>
+              </Pressable>
+            ))}
+          </View>
         </View>
       </SafeAreaView>
     </View>
@@ -235,6 +346,11 @@ export default function FocusScreen() {
 function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
   return StyleSheet.create({
     container: { flex: 1 },
+    camera: { ...StyleSheet.absoluteFill, opacity: 0.58 },
+    cameraShade: {
+      ...StyleSheet.absoluteFill,
+      backgroundColor: "rgba(0,0,0,0.22)",
+    },
     aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.72 },
     auroraLight: { opacity: 0.55 },
     safeArea: {
@@ -261,6 +377,12 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       fontWeight: "600",
       marginTop: 14,
       textAlign: "center",
+    },
+    recordingLabel: {
+      color: "#FF453A",
+      fontSize: 13,
+      fontWeight: "700",
+      marginTop: 12,
     },
     ringWrap: {
       width: RING_SIZE,
@@ -293,5 +415,25 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       alignItems: "center",
       justifyContent: "center",
     },
+    timerHint: {
+      color: C.textTertiary,
+      fontSize: 12,
+      fontWeight: "600",
+      marginTop: 10,
+    },
+    speedRow: { flexDirection: "row", gap: 8, marginTop: 18 },
+    speedButton: {
+      minWidth: 44,
+      paddingVertical: 7,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      alignItems: "center",
+      backgroundColor: "rgba(0,0,0,0.28)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.18)",
+    },
+    speedButtonActive: { backgroundColor: palette.orange, borderColor: palette.orange },
+    speedText: { color: C.textSecondary, fontSize: 12, fontWeight: "700" },
+    speedTextActive: { color: palette.white },
   });
 }

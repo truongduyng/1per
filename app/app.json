@@ -18,6 +18,7 @@
         "CFBundleDisplayName": "1Per",
         "ITSAppUsesNonExemptEncryption": false,
         "NSMicrophoneUsageDescription": "$(PRODUCT_NAME) needs microphone access to record voice notes.",
+        "NSCameraUsageDescription": "$(PRODUCT_NAME) uses the camera to record your focus session.",
         "NSPhotoLibraryUsageDescription": "$(PRODUCT_NAME) needs access to your photo library to attach photos to your journal entries."
       }
     },
@@ -69,6 +70,12 @@
         {
           "photosPermission": "$(PRODUCT_NAME) needs access to your photo library to attach photos to your journal entries.",
           "cameraPermission": "$(PRODUCT_NAME) needs camera access to capture photos for your journal entries."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "$(PRODUCT_NAME) uses the camera to record your focus session."
         }
       ],
       "expo-sharing",
