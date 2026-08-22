@@ -5,8 +5,10 @@ import { useTheme } from "@/hooks/useTheme";
 import { resolveIoniconName } from "@/lib/iconNames";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+
+const DOUBLE_TAP_MS = 300;
 
 type HabitRow = typeof habits.$inferSelect;
 type CompletionRow = typeof habitCompletions.$inferSelect;
@@ -28,6 +30,13 @@ export function HomeHabitsSection({
 }: Props) {
   const C = useTheme();
   const [checkInHabitId, setCheckInHabitId] = useState<number | null>(null);
+  const pendingTapRef = useRef<{ habitId: number; timer: ReturnType<typeof setTimeout> } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pendingTapRef.current) clearTimeout(pendingTapRef.current.timer);
+    };
+  }, []);
 
   const todayCheckIns = useMemo(() => {
     const map: Record<number, { photoUri: string | null; note: string | null }> = {};
@@ -64,13 +73,32 @@ export function HomeHabitsSection({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const handleHabitPress = (habitId: number, isDone: boolean) => {
+  const runSingleTap = (habitId: number, isDone: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (isDone) {
       void undoCheckIn(habitId);
       return;
     }
     setCheckInHabitId(habitId);
+  };
+
+  const handleHabitPress = (habitId: number, isDone: boolean) => {
+    const pending = pendingTapRef.current;
+
+    if (pending?.habitId === habitId) {
+      clearTimeout(pending.timer);
+      pendingTapRef.current = null;
+      if (!isDone) void submitCheckIn(habitId, { photoUri: null, note: "" });
+      return;
+    }
+
+    if (pending) clearTimeout(pending.timer);
+
+    const timer = setTimeout(() => {
+      pendingTapRef.current = null;
+      runSingleTap(habitId, isDone);
+    }, DOUBLE_TAP_MS);
+    pendingTapRef.current = { habitId, timer };
   };
 
   const s = makeStyles(C);

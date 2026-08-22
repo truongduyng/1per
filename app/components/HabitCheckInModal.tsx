@@ -285,7 +285,6 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     sheet: {
       flex: 1,
-      backgroundColor: C.background,
       paddingHorizontal: 20,
       paddingTop: 12,
     },

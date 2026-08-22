@@ -42,6 +42,16 @@ export default function TabLayout() {
           />
           <NativeTabs.Trigger.Label>Habits</NativeTabs.Trigger.Label>
         </NativeTabs.Trigger>
+        <NativeTabs.Trigger name="journal">
+          <NativeTabs.Trigger.Icon
+            sf={{
+              default: "book",
+              selected: "book.fill",
+            }}
+            md="menu_book"
+          />
+          <NativeTabs.Trigger.Label>Journal</NativeTabs.Trigger.Label>
+        </NativeTabs.Trigger>
         <NativeTabs.Trigger name="profile">
           <NativeTabs.Trigger.Icon
             sf={{
