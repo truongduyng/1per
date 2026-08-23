@@ -29,7 +29,6 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { DAY_NAMES } from "@/lib/performance";
 import { resolveIoniconName, type IoniconName } from "@/lib/iconNames";
 
 const ALL_DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
@@ -582,7 +581,6 @@ export default function RoutinesScreen() {
   const C = useTheme();
   const today = useMemo(() => getTodayInLocalTimezone(), []);
   const todayKey = getLocalDateString(today);
-  const todayName = DAY_NAMES[today.getDay()];
   const [expandedHabitId, setExpandedHabitId] = useState<number | null>(null);
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [detailChallengeId, setDetailChallengeId] = useState<number | null>(null);
@@ -652,9 +650,8 @@ export default function RoutinesScreen() {
   );
 
   const todayHabits = useMemo(() => {
-    const list = allHabits ?? [];
-    return list.filter((h) => (h.daysOfWeek as string[]).includes(todayName));
-  }, [allHabits, todayName]);
+    return allHabits ?? [];
+  }, [allHabits]);
 
   const doneIds = useMemo(() => {
     const set = new Set<number>();
