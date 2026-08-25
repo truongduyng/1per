@@ -35,6 +35,28 @@ export async function hasCloudSession() {
   return !!getSessionToken();
 }
 
+/**
+ * Hydrates the local database from the already authenticated cloud account
+ * before the change listener is allowed to upload anything.
+ *
+ * `null` means there is no signed-in account. `false` means the account is
+ * signed in but has no snapshot yet, so the caller may create the initial
+ * backup from local data. A thrown error is intentionally left to the caller:
+ * uploading local data after a failed download could overwrite the cloud copy.
+ */
+export async function restoreCloudOnStartup(): Promise<boolean | null> {
+  await ensureSessionLoaded();
+  const token = getSessionToken();
+  if (!token) return null;
+
+  const remote = await downloadCloudSnapshot(token);
+  if (!remote) return false;
+
+  await importSnapshot(remote as DataSnapshot);
+  await restoreMediaFiles();
+  return true;
+}
+
 export async function signInAndRestore() {
   const identity = await signInWithApple();
   await setSessionToken(await createSyncSession(identity.identityToken));

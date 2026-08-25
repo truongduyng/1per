@@ -54,6 +54,7 @@ export default function OnboardingScreen() {
     setName,
     avatar,
     setAvatar,
+    goToStep,
     goNext,
     goBack,
     showBack,
@@ -102,7 +103,15 @@ export default function OnboardingScreen() {
   const renderStep = () => {
     switch (step.type) {
       case "hook":
-        return <HookScreen onNext={advance} />;
+        return (
+          <HookScreen
+            onNext={advance}
+            onExistingAccount={() => {
+              const backupStep = STEPS.findIndex(({ type }) => type === "backup");
+              if (backupStep >= 0) goToStep(backupStep);
+            }}
+          />
+        );
       case "focus-area":
         return (
           <FocusAreaScreen

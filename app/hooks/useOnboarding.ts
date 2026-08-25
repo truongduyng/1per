@@ -526,9 +526,9 @@ export function useOnboarding() {
     setName,
     avatar,
     setAvatar,
+    goToStep,
     goNext,
     goBack,
-    goToStep,
     showBack,
     completeOnboarding,
   };

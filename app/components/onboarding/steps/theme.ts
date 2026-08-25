@@ -72,6 +72,12 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       lineHeight: 22,
       fontWeight: "500",
     },
+    existingAccount: {
+      color: C.accent,
+      fontSize: 15,
+      fontWeight: "700",
+      marginTop: 2,
+    },
     primaryButton: {
       minHeight: 56,
       borderRadius: 8,
