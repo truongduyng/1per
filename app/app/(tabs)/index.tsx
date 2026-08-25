@@ -35,7 +35,6 @@ import {
   useAnimatedValue,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import Svg, { Circle } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { DAY_NAMES } from "@/lib/performance";
 import { Fonts, palette } from "@/constants/theme";
@@ -47,11 +46,6 @@ import {
   type AppBlockerSelectionMetadata,
   type AppBlockerSelectionSummary,
 } from "@/lib/appBlocker";
-
-const PROGRESS_RING_SIZE = 148;
-const PROGRESS_RING_STROKE = 12;
-const PROGRESS_RING_RADIUS = (PROGRESS_RING_SIZE - PROGRESS_RING_STROKE) / 2;
-const PROGRESS_RING_CIRCUMFERENCE = 2 * Math.PI * PROGRESS_RING_RADIUS;
 
 const GOAL_CONFETTI = [
   { x: -34, y: -34, color: "#FF6B22", rotate: "-28deg" },
@@ -121,50 +115,6 @@ export default function HomeScreen() {
     }
     return set;
   }, [allCompletions, todayKey]);
-
-  const skippedIds = useMemo(() => {
-    const set = new Set<number>();
-    for (const c of allCompletions ?? []) {
-      if (c.date === todayKey && c.status === "skipped") set.add(c.habitId);
-    }
-    return set;
-  }, [allCompletions, todayKey]);
-
-  // Today's progress counts the habits due today plus the two daily rituals
-  // (Main Goal and Evening Reset), matching the Routines tab.
-  const todayProgress = useMemo(() => {
-    const habitsCompleted = todayHabits.filter((habit) =>
-      doneIds.has(habit.id),
-    ).length;
-    const habitsSkipped = todayHabits.filter((habit) =>
-      skippedIds.has(habit.id),
-    ).length;
-
-    const goalDone = Boolean(todayFocus?.completedAt);
-    const resetDone = Boolean(todayFocus?.eveningResetCompletedAt);
-
-    const completed = habitsCompleted + (goalDone ? 1 : 0) + (resetDone ? 1 : 0);
-    const total = todayHabits.length + 2;
-    const ratio = total > 0 ? completed / total : 0;
-
-    const doneByDate = new Set(
-      (allCompletions ?? [])
-        .filter((item) => item.status === "done")
-        .map((item) => item.date),
-    );
-
-    let dayStreak = 0;
-    const cursor = new Date(today);
-    while (doneByDate.has(getLocalDateString(cursor))) {
-      dayStreak += 1;
-      cursor.setDate(cursor.getDate() - 1);
-    }
-
-    return { completed, skipped: habitsSkipped, total, ratio, dayStreak };
-  }, [allCompletions, doneIds, skippedIds, today, todayFocus, todayHabits]);
-
-  const progressOffset =
-    PROGRESS_RING_CIRCUMFERENCE * (1 - todayProgress.ratio);
 
   const isEveningResetUnlocked = useMemo(
     () => __DEV__ || new Date().getHours() >= 21,
@@ -498,92 +448,6 @@ export default function HomeScreen() {
               <Text style={s.headerAffirmation} selectable>
                 {dailyAffirmation?.text ?? "Preparing today's affirmation..."}
               </Text>
-            </View>
-          </View>
-
-          <Text style={s.sectionLabel}>TODAY&apos;S PROGRESS</Text>
-          <View style={[s.progressCard, s.heroProgressCard]}>
-            <View style={s.progressRingWrap}>
-              <Svg width={PROGRESS_RING_SIZE} height={PROGRESS_RING_SIZE}>
-                <Circle
-                  cx={PROGRESS_RING_SIZE / 2}
-                  cy={PROGRESS_RING_SIZE / 2}
-                  r={PROGRESS_RING_RADIUS}
-                  stroke={C.cardBorder}
-                  strokeWidth={PROGRESS_RING_STROKE}
-                  fill="none"
-                />
-                <Circle
-                  cx={PROGRESS_RING_SIZE / 2}
-                  cy={PROGRESS_RING_SIZE / 2}
-                  r={PROGRESS_RING_RADIUS}
-                  stroke={C.accent}
-                  strokeWidth={PROGRESS_RING_STROKE}
-                  strokeLinecap="round"
-                  strokeDasharray={PROGRESS_RING_CIRCUMFERENCE}
-                  strokeDashoffset={progressOffset}
-                  fill="none"
-                  rotation="-90"
-                  originX={PROGRESS_RING_SIZE / 2}
-                  originY={PROGRESS_RING_SIZE / 2}
-                />
-              </Svg>
-              <View style={s.progressRingCenter}>
-                <Text style={s.progressValue}>
-                  {todayProgress.completed}/{todayProgress.total}
-                </Text>
-                <Text style={s.progressValueLabel}>Completed</Text>
-              </View>
-            </View>
-
-            <View style={s.progressStats}>
-              <View style={s.progressStatRow}>
-                <View style={s.progressStatIconWrap}>
-                  <Ionicons
-                    name="checkmark-circle-outline"
-                    size={18}
-                    color={C.iconSecondary}
-                  />
-                </View>
-                <View>
-                  <Text style={s.progressStatValue}>
-                    {todayProgress.completed}
-                  </Text>
-                  <Text style={s.progressStatLabel}>Completed</Text>
-                </View>
-              </View>
-
-              <View style={s.progressStatRow}>
-                <View style={s.progressStatIconWrap}>
-                  <Ionicons
-                    name="play-skip-forward-outline"
-                    size={18}
-                    color={C.iconSecondary}
-                  />
-                </View>
-                <View>
-                  <Text style={s.progressStatValue}>
-                    {todayProgress.skipped}
-                  </Text>
-                  <Text style={s.progressStatLabel}>Skipped</Text>
-                </View>
-              </View>
-
-              <View style={s.progressStatRow}>
-                <View style={s.progressStatIconWrap}>
-                  <Ionicons
-                    name="flame-outline"
-                    size={18}
-                    color={C.iconSecondary}
-                  />
-                </View>
-                <View>
-                  <Text style={s.progressStatValue}>
-                    {todayProgress.dayStreak}
-                  </Text>
-                  <Text style={s.progressStatLabel}>Streaks</Text>
-                </View>
-              </View>
             </View>
           </View>
 
@@ -1177,83 +1041,8 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       opacity: 0,
     },
 
-    // Sits inside the hero band above the main goal, so it matches goalCard's
-    // translucent treatment rather than the opaque card background.
-    heroProgressCard: {
-      backgroundColor: "rgba(255,255,255,0.2)",
-      marginBottom: 22,
-    },
     heroSectionLabelSpaced: {
       marginTop: 4,
-    },
-    progressCard: {
-      backgroundColor: C.cardBg,
-      borderRadius: 24,
-      borderWidth: 1,
-      borderColor: C.cardBorder,
-      paddingHorizontal: 18,
-      paddingVertical: 20,
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      gap: 18,
-    },
-    progressRingWrap: {
-      width: PROGRESS_RING_SIZE,
-      height: PROGRESS_RING_SIZE,
-      alignItems: "center",
-      justifyContent: "center",
-      position: "relative",
-    },
-    progressRingCenter: {
-      position: "absolute",
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    progressValue: {
-      fontSize: 23,
-      fontWeight: "700",
-      color: C.textPrimary,
-      letterSpacing: -0.4,
-    },
-    progressValueLabel: {
-      marginTop: 4,
-      fontSize: 13,
-      color: C.textSecondary,
-      fontWeight: "500",
-    },
-    progressStats: {
-      flex: 1,
-      minWidth: 116,
-      gap: 18,
-    },
-    progressStatRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 12,
-    },
-    progressStatIconWrap: {
-      width: 28,
-      height: 28,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: C.cardBorder,
-      backgroundColor: C.inputBg,
-      alignItems: "center",
-      justifyContent: "center",
-      flexShrink: 0,
-    },
-    progressStatValue: {
-      fontSize: 18,
-      fontWeight: "700",
-      color: C.textPrimary,
-      lineHeight: 20,
-    },
-    progressStatLabel: {
-      marginTop: 2,
-      fontSize: 14,
-      color: C.textSecondary,
-      lineHeight: 18,
     },
 
     resetCard: {
