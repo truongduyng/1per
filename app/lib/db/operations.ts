@@ -1,9 +1,9 @@
 import { eq, desc, asc, count, and, isNull, isNotNull } from 'drizzle-orm';
 import {
   db,
-  profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, challenges,
+  profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, challenges, journalEntries,
   type NewProfile, type NewHabit, type NewHabitCompletion, type NewDailyFocus,
-  type NewDailyAffirmation,
+  type NewDailyAffirmation, type NewJournalEntry,
 } from './database';
 import { ensureDatabaseInitialized } from './init';
 import { getLocalDateString } from '../timezone';
@@ -351,6 +351,34 @@ export const dailyFocusOps = {
         .where(eq(dailyFocus.date, key))
         .returning()
     );
+  },
+};
+
+// ── journalEntryOps ───────────────────────────────────────────────────────────
+export const journalEntryOps = {
+  async create(data: Omit<NewJournalEntry, 'date'> & { date?: string }) {
+    const date = data.date ?? getLocalDateString(new Date());
+    const note = data.note?.trim() || null;
+    const photoUri = data.photoUri?.trim() || null;
+    return await withInitializedDb(() =>
+      db.insert(journalEntries).values({ date, note, photoUri }).returning()
+    );
+  },
+
+  async getAll() {
+    return await withInitializedDb(() =>
+      db.select().from(journalEntries).orderBy(desc(journalEntries.createdAt))
+    );
+  },
+
+  async delete(id: number) {
+    return await withInitializedDb(() =>
+      db.delete(journalEntries).where(eq(journalEntries.id, id))
+    );
+  },
+
+  async deleteAll() {
+    return await withInitializedDb(() => db.delete(journalEntries));
   },
 };
 

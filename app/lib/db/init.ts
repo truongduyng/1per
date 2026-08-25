@@ -1,4 +1,5 @@
 import { deleteAllHabitPhotos } from '@/lib/habitPhotos';
+import { deleteAllJournalPhotos } from '@/lib/journalPhotos';
 import { storage } from '@/lib/storage';
 import { expoDb } from './database';
 
@@ -6,11 +7,12 @@ let initializationPromise: Promise<void> | null = null;
 
 export async function resetDatabase() {
   try {
-    const tables = ['habit_completions', 'habits', 'challenges', 'daily_focus', 'daily_affirmations', 'profiles'];
+    const tables = ['habit_completions', 'habits', 'challenges', 'daily_focus', 'daily_affirmations', 'journal_entries', 'profiles'];
     for (const table of tables) {
       await expoDb.execAsync(`DROP TABLE IF EXISTS ${table};`);
     }
     deleteAllHabitPhotos();
+    deleteAllJournalPhotos();
     storage.clearAll();
     initializationPromise = null;
     await ensureDatabaseInitialized();
@@ -189,6 +191,16 @@ export async function initializeDatabase() {
         source TEXT NOT NULL DEFAULT 'ai',
         created_at INTEGER NOT NULL DEFAULT (unixepoch()),
         updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+      );
+    `);
+
+    expoDb.execSync(`
+      CREATE TABLE IF NOT EXISTS journal_entries (
+        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        date TEXT NOT NULL,
+        note TEXT,
+        photo_uri TEXT,
+        created_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
     `);
   } catch (error) {

@@ -11,7 +11,6 @@ export function HookScreen({ onNext }: { onNext: () => void }) {
   return (
     <ScreenShell onNext={onNext}>
       <View style={s.heroVisual}>
-        <View style={s.heroGlow} />
         <Image
           source={require("@/assets/images/onboarding/promise-kept.png")}
           style={s.heroIllustration}

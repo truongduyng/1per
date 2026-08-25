@@ -1,6 +1,8 @@
 {
   "platforms": ["apple"],
   "apple": {
-    "modules": ["OnePerVideoComposer"]
+    "modules": ["OnePerVideoComposer"],
+    "podspecPath": "OnePerVideoComposer.podspec",
+    "swiftModuleName": "OnePerVideoComposer"
   }
 }

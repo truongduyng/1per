@@ -1,5 +1,8 @@
 import GradientBackground from "@/components/GradientBackground";
-import Aurora, { AURORA_LIGHT_AURORA_COLORS, AURORA_LIGHT_SKY_COLORS } from "@/components/Aurora";
+import Aurora, {
+  AURORA_LIGHT_AURORA_COLORS,
+  AURORA_LIGHT_SKY_COLORS,
+} from "@/components/Aurora";
 import { palette } from "@/constants/theme";
 import { usePreventScreenSleep } from "@/hooks/usePreventScreenSleep";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -37,52 +40,74 @@ export default function FocusScreen() {
   const C = useTheme();
   const colorScheme = useColorScheme();
   const isLight = colorScheme === "light";
-  const [remainingSeconds, setRemainingSeconds] = useState(FOCUS_DURATION_SECONDS);
+  const [remainingSeconds, setRemainingSeconds] = useState(
+    FOCUS_DURATION_SECONDS,
+  );
   const [isRunning, setIsRunning] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [videoSpeed, setVideoSpeed] = useState(1);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
-  const recordingPromiseRef = useRef<Promise<{ uri: string } | undefined> | undefined>(undefined);
+  const recordingPromiseRef = useRef<
+    Promise<{ uri: string } | undefined> | undefined
+  >(undefined);
+  const wantsRecordingRef = useRef(false);
+  const cameraReadyRef = useRef(false);
   const recordedSegmentsRef = useRef<string[]>([]);
   const unsavedElapsedSecondsRef = useRef(0);
   const didCompleteSessionRef = useRef(false);
   const { data: focusRows } = useLiveQuery(
-    db.select().from(dailyFocus).where(eq(dailyFocus.date, todayKey)).limit(1)
+    db.select().from(dailyFocus).where(eq(dailyFocus.date, todayKey)).limit(1),
   );
   usePreventScreenSleep(isRunning && remainingSeconds > 0, "kadoze-focus-room");
 
   const stopCameraRecording = async () => {
-    if (!isRecording) return;
+    wantsRecordingRef.current = false;
+    const recordingPromise = recordingPromiseRef.current;
+    if (!recordingPromise) {
+      setIsRecording(false);
+      return;
+    }
     cameraRef.current?.stopRecording();
-    const recording = await recordingPromiseRef.current?.catch(() => undefined);
-    recordingPromiseRef.current = undefined;
-    setIsRecording(false);
-    if (recording?.uri) recordedSegmentsRef.current.push(recording.uri);
-    return recording?.uri;
+    return recordingPromise.catch(() => undefined);
   };
 
   const startCameraRecording = async () => {
+    wantsRecordingRef.current = true;
     if (!cameraPermission?.granted) {
       const permission = await requestCameraPermission();
       if (!permission.granted) return false;
     }
-    if (!cameraRef.current || isRecording) return true;
+    if (!cameraRef.current || !cameraReadyRef.current || recordingPromiseRef.current)
+      return true;
 
-    setIsRecording(true);
-    const recording = cameraRef.current.recordAsync({ maxDuration: 60 * 60 });
-    recordingPromiseRef.current = recording;
-    void recording.then(() => {
+    try {
+      const recording = cameraRef.current.recordAsync({ maxDuration: 60 * 60 });
+      recordingPromiseRef.current = recording;
+      setIsRecording(true);
+      void recording
+        .then((result) => {
+          if (result?.uri) recordedSegmentsRef.current.push(result.uri);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (recordingPromiseRef.current === recording) {
+            recordingPromiseRef.current = undefined;
+            setIsRecording(false);
+          }
+        });
+    } catch {
       recordingPromiseRef.current = undefined;
       setIsRecording(false);
-    }).catch(() => {
-      recordingPromiseRef.current = undefined;
-      setIsRecording(false);
-    });
+      return false;
+    }
     return true;
   };
 
-  const hasGoal = useMemo(() => Boolean(focusRows?.[0]?.goal?.trim()), [focusRows]);
+  const hasGoal = useMemo(
+    () => Boolean(focusRows?.[0]?.goal?.trim()),
+    [focusRows],
+  );
 
   const goalText = useMemo(() => {
     const goal = focusRows?.[0]?.goal?.trim();
@@ -90,13 +115,7 @@ export default function FocusScreen() {
   }, [focusRows]);
 
   useEffect(() => {
-    if (isRunning && cameraPermission?.granted && !isRecording) {
-      void startCameraRecording();
-    }
-  }, [cameraPermission?.granted, isRecording, isRunning]);
-
-  useEffect(() => {
-    if (!isRunning || remainingSeconds <= 0) return;
+    if (!isRunning) return;
 
     const interval = setInterval(() => {
       setRemainingSeconds((current) => {
@@ -111,7 +130,7 @@ export default function FocusScreen() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isRunning, remainingSeconds]);
+  }, [isRunning]);
 
   const persistElapsedFocusTime = async (roundUpPartialMinute = false) => {
     const elapsedSeconds = unsavedElapsedSecondsRef.current;
@@ -158,8 +177,9 @@ export default function FocusScreen() {
   }, []);
 
   useEffect(() => {
+    const camera = cameraRef.current;
     return () => {
-      cameraRef.current?.stopRecording();
+      camera?.stopRecording();
     };
   }, []);
 
@@ -193,8 +213,10 @@ export default function FocusScreen() {
     await persistElapsedFocusTime(true);
     await stopCameraRecording();
     let composedVideoUri: string | undefined;
-    if (recordedSegmentsRef.current.length > 0) {
-      const logo = Asset.fromModule(require("@/assets/images/new_logo_transparent.png"));
+    if (recordedSegmentsRef.current.length > 0 && OnePerVideoComposer) {
+      const logo = Asset.fromModule(
+        require("@/assets/images/new_logo_transparent.png"),
+      );
       await logo.downloadAsync();
       try {
         const composedVideoPath = await OnePerVideoComposer.composeAsync({
@@ -272,6 +294,15 @@ export default function FocusScreen() {
           facing="front"
           mode="video"
           mirror
+          onCameraReady={() => {
+            cameraReadyRef.current = true;
+            if (wantsRecordingRef.current && cameraPermission?.granted) {
+              void startCameraRecording();
+            }
+          }}
+          onMountError={() => {
+            cameraReadyRef.current = false;
+          }}
         />
       ) : null}
       <View style={s.cameraShade} pointerEvents="none" />
@@ -289,7 +320,9 @@ export default function FocusScreen() {
           <Text style={s.goal}>{goalText}</Text>
           <Text style={s.subtitle}>Stay focused. Do one thing.</Text>
 
-          {isRecording ? <Text style={s.recordingLabel}>● Recording</Text> : null}
+          {isRecording ? (
+            <Text style={s.recordingLabel}>● Recording</Text>
+          ) : null}
 
           <View style={s.ringWrap}>
             <Svg width={RING_SIZE} height={RING_SIZE} style={s.ringSvg}>
@@ -322,22 +355,40 @@ export default function FocusScreen() {
 
           <Pressable style={s.timerButton} onPress={toggleTimer}>
             <Ionicons
-              name={remainingSeconds === 0 ? "refresh" : isRunning ? "pause" : "play"}
+              name={
+                remainingSeconds === 0
+                  ? "refresh"
+                  : isRunning
+                    ? "pause"
+                    : "play"
+              }
               size={24}
               color={palette.white}
             />
           </Pressable>
           <Text style={s.timerHint}>
-            {isRunning ? "Pause timer and recording" : "Start timer and recording"}
+            {isRunning
+              ? "Pause timer and recording"
+              : "Start timer and recording"}
           </Text>
           <View style={s.speedRow}>
             {[1, 2, 4].map((speed) => (
               <Pressable
                 key={speed}
                 onPress={() => setVideoSpeed(speed)}
-                style={[s.speedButton, videoSpeed === speed && s.speedButtonActive]}
+                style={[
+                  s.speedButton,
+                  videoSpeed === speed && s.speedButtonActive,
+                ]}
               >
-                <Text style={[s.speedText, videoSpeed === speed && s.speedTextActive]}>{speed}×</Text>
+                <Text
+                  style={[
+                    s.speedText,
+                    videoSpeed === speed && s.speedTextActive,
+                  ]}
+                >
+                  {speed}×
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -436,7 +487,10 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       borderWidth: 1,
       borderColor: "rgba(255,255,255,0.18)",
     },
-    speedButtonActive: { backgroundColor: palette.orange, borderColor: palette.orange },
+    speedButtonActive: {
+      backgroundColor: palette.orange,
+      borderColor: palette.orange,
+    },
     speedText: { color: C.textSecondary, fontSize: 12, fontWeight: "700" },
     speedTextActive: { color: palette.white },
   });

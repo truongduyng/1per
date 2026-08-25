@@ -67,6 +67,16 @@ export const dailyFocus = sqliteTable('daily_focus', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
 });
 
+// ── journal_entries ──────────────────────────────────────────────────────────
+// Freestyle journal entries added directly from the Journal tab, not tied to a habit.
+export const journalEntries = sqliteTable('journal_entries', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  date: text('date').notNull(),                  // 'YYYY-MM-DD'
+  note: text('note'),
+  photoUri: text('photo_uri'),                   // local file:// photo attached to the entry
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+});
+
 // ── daily_affirmations ───────────────────────────────────────────────────────
 // AI-generated daily affirmation, cached locally by date.
 export const dailyAffirmations = sqliteTable('daily_affirmations', {
@@ -96,3 +106,6 @@ export type NewDailyFocus = typeof dailyFocus.$inferInsert;
 
 export type DailyAffirmationRow = typeof dailyAffirmations.$inferSelect;
 export type NewDailyAffirmation = typeof dailyAffirmations.$inferInsert;
+
+export type JournalEntry = typeof journalEntries.$inferSelect;
+export type NewJournalEntry = typeof journalEntries.$inferInsert;

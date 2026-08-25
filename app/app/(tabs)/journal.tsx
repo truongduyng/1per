@@ -1,18 +1,20 @@
+import { AddJournalEntryModal } from "@/components/AddJournalEntryModal";
 import GradientBackground from "@/components/GradientBackground";
-import { dailyFocus, db, habitCompletions, habits } from "@/lib/db";
+import { dailyFocus, db, habitCompletions, habits, journalEntries, journalEntryOps } from "@/lib/db";
 import { resolveIoniconName } from "@/lib/iconNames";
 import { useTheme } from "@/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { desc, isNotNull, or } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Sharing from "expo-sharing";
 
 type TimelineItem =
   | { kind: "habit"; id: string; createdAt: number; entry: typeof habitCompletions.$inferSelect }
-  | { kind: "focus"; id: string; createdAt: number; entry: typeof dailyFocus.$inferSelect };
+  | { kind: "focus"; id: string; createdAt: number; entry: typeof dailyFocus.$inferSelect }
+  | { kind: "journal"; id: string; createdAt: number; entry: typeof journalEntries.$inferSelect };
 
 async function openFocusVideo(uri: string) {
   try {
@@ -63,6 +65,11 @@ export default function JournalScreen() {
       .where(isNotNull(dailyFocus.videoUri))
       .orderBy(desc(dailyFocus.date)),
   );
+  const { data: freestyleEntries } = useLiveQuery(
+    db.select().from(journalEntries).orderBy(desc(journalEntries.createdAt)),
+  );
+
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   const habitById = useMemo(() => {
     const map = new Map<number, (typeof habits.$inferSelect)>();
@@ -92,10 +99,35 @@ export default function JournalScreen() {
       });
       grouped.set(entry.date, list);
     }
+    for (const entry of freestyleEntries ?? []) {
+      const list = grouped.get(entry.date) ?? [];
+      list.push({
+        kind: "journal",
+        id: `journal-${entry.id}`,
+        createdAt: entry.createdAt?.getTime() ?? 0,
+        entry,
+      });
+      grouped.set(entry.date, list);
+    }
     const dated = Array.from(grouped.entries()).sort(([a], [b]) => (a < b ? 1 : -1));
     for (const [, items] of dated) items.sort((a, b) => b.createdAt - a.createdAt);
     return dated;
-  }, [entries, focusVideos]);
+  }, [entries, focusVideos, freestyleEntries]);
+
+  const confirmDeleteJournalEntry = (id: number) => {
+    Alert.alert("Delete entry?", "This journal entry will be permanently removed.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => void journalEntryOps.delete(id),
+      },
+    ]);
+  };
+
+  const handleSaveEntry = async (draft: { note: string; photoUri: string | null }) => {
+    await journalEntryOps.create({ note: draft.note, photoUri: draft.photoUri });
+  };
 
   const s = makeStyles(C);
 
@@ -119,8 +151,8 @@ export default function JournalScreen() {
             <Ionicons name="book-outline" size={28} color={C.iconTertiary} />
             <Text style={s.emptyTitle}>No entries yet</Text>
             <Text style={s.emptyBody}>
-              Add a photo or note at check-in, or finish a focus session, to
-              see it here.
+              Add a photo or note at check-in, finish a focus session, or tap
+              the + button to write a freestyle entry.
             </Text>
           </View>
         ) : (
@@ -179,6 +211,46 @@ export default function JournalScreen() {
                       );
                     }
 
+                    if (item.kind === "journal") {
+                      const { entry } = item;
+                      return (
+                        <View key={item.id} style={s.timelineRow}>
+                          <View style={s.timelineRail}>
+                            <View style={s.timelineNode}>
+                              <Ionicons
+                                name="create-outline"
+                                size={14}
+                                color={C.accentText}
+                              />
+                            </View>
+                            {!isLastEntry && <View style={s.timelineLine} />}
+                          </View>
+                          <Pressable
+                            style={s.entryCard}
+                            onLongPress={() => confirmDeleteJournalEntry(entry.id)}
+                            accessibilityRole="button"
+                            accessibilityLabel="Journal entry, long press to delete"
+                          >
+                            <View style={s.entryHeader}>
+                              <Text style={s.entryTitle} numberOfLines={1}>
+                                Journal
+                              </Text>
+                            </View>
+                            {entry.photoUri ? (
+                              <Image
+                                source={{ uri: entry.photoUri }}
+                                style={s.entryPhoto}
+                                resizeMode="cover"
+                              />
+                            ) : null}
+                            {entry.note ? (
+                              <Text style={s.entryNote}>{entry.note}</Text>
+                            ) : null}
+                          </Pressable>
+                        </View>
+                      );
+                    }
+
                     const { entry } = item;
                     const habit = habitById.get(entry.habitId);
                     return (
@@ -222,6 +294,21 @@ export default function JournalScreen() {
           </View>
         )}
       </ScrollView>
+
+      <Pressable
+        style={[s.fab, { bottom: insets.bottom + 24 }]}
+        onPress={() => setAddModalVisible(true)}
+        accessibilityRole="button"
+        accessibilityLabel="Add journal entry"
+      >
+        <Ionicons name="add" size={28} color={C.textInverse} />
+      </Pressable>
+
+      <AddJournalEntryModal
+        visible={addModalVisible}
+        onClose={() => setAddModalVisible(false)}
+        onSave={handleSaveEntry}
+      />
     </View>
   );
 }
@@ -346,6 +433,21 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       color: C.textTertiary,
       textAlign: "center",
       lineHeight: 19,
+    },
+    fab: {
+      position: "absolute",
+      right: 20,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: C.accent,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.25,
+      shadowRadius: 8,
+      elevation: 6,
     },
   });
 }

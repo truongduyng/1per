@@ -269,6 +269,7 @@ function makeModalStyles(C: ReturnType<typeof import("@/hooks/useTheme").useThem
       paddingHorizontal: 14,
       paddingVertical: 13,
       fontSize: 15,
+      lineHeight: 20,
       color: C.textPrimary,
       textAlignVertical: "center",
     },
