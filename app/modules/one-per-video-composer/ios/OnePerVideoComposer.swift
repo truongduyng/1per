@@ -29,7 +29,7 @@ public final class OnePerVideoComposer: Module {
     }
     let audioTrack = composition.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
     var cursor = CMTime.zero
-    var renderSize = CGSize(width: 1080, height: 1920)
+    let renderSize = CGSize(width: 1080, height: 1920)
 
     for asset in assets {
       guard let sourceVideo = try await asset.loadTracks(withMediaType: .video).first else { continue }
@@ -38,7 +38,6 @@ public final class OnePerVideoComposer: Module {
       if let sourceAudio = try await asset.loadTracks(withMediaType: .audio).first {
         try audioTrack?.insertTimeRange(range, of: sourceAudio, at: cursor)
       }
-      renderSize = try await sourceVideo.load(.naturalSize)
       cursor = CMTimeAdd(cursor, range.duration)
     }
 
@@ -52,7 +51,9 @@ public final class OnePerVideoComposer: Module {
     let videoComposition = AVMutableVideoComposition()
     videoComposition.renderSize = renderSize
     videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
-    videoComposition.instructions = [makeInstruction(track: videoTrack, duration: outputDuration)]
+    videoComposition.instructions = [
+      makeInstruction(track: videoTrack, duration: outputDuration, renderSize: renderSize)
+    ]
 
     let parent = CALayer()
     let videoLayer = CALayer()
@@ -81,11 +82,40 @@ public final class OnePerVideoComposer: Module {
     return outputURL.path
   }
 
-  private func makeInstruction(track: AVAssetTrack, duration: CMTime) -> AVMutableVideoCompositionInstruction {
+  private func makeInstruction(
+    track: AVAssetTrack,
+    duration: CMTime,
+    renderSize: CGSize
+  ) -> AVMutableVideoCompositionInstruction {
     let instruction = AVMutableVideoCompositionInstruction()
     instruction.timeRange = CMTimeRange(start: .zero, duration: duration)
     let layer = AVMutableVideoCompositionLayerInstruction(assetTrack: track)
-    layer.setOpacity(1, at: .zero)
+
+    let naturalSize = track.naturalSize
+    let transformedRect = CGRect(origin: .zero, size: naturalSize).applying(track.preferredTransform)
+    let orientedSize = CGSize(
+      width: abs(transformedRect.width),
+      height: abs(transformedRect.height)
+    )
+    let scale = max(
+      renderSize.width / max(1, orientedSize.width),
+      renderSize.height / max(1, orientedSize.height)
+    )
+    var transform = track.preferredTransform
+    transform = transform.concatenating(
+      CGAffineTransform(
+        translationX: -transformedRect.minX,
+        y: -transformedRect.minY
+      )
+    )
+    transform = transform.concatenating(CGAffineTransform(scaleX: scale, y: scale))
+    transform = transform.concatenating(
+      CGAffineTransform(
+        translationX: (renderSize.width - orientedSize.width * scale) / 2,
+        y: (renderSize.height - orientedSize.height * scale) / 2
+      )
+    )
+    layer.setTransform(transform, at: .zero)
     instruction.layerInstructions = [layer]
     return instruction
   }

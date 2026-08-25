@@ -35,6 +35,14 @@ function formatCountdown(totalSeconds: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function getTimelapseSpeed(seconds: number) {
+  if (seconds <= 60) return 2;
+  if (seconds <= 5 * 60) return 4;
+  if (seconds <= 15 * 60) return 8;
+  if (seconds <= 25 * 60) return 16;
+  return 32;
+}
+
 export default function FocusScreen() {
   const todayKey = getLocalDateString(new Date());
   const C = useTheme();
@@ -45,7 +53,7 @@ export default function FocusScreen() {
   );
   const [isRunning, setIsRunning] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [videoSpeed, setVideoSpeed] = useState(1);
+  const [isCameraEnabled, setIsCameraEnabled] = useState(false);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const recordingPromiseRef = useRef<
@@ -55,6 +63,7 @@ export default function FocusScreen() {
   const cameraReadyRef = useRef(false);
   const recordedSegmentsRef = useRef<string[]>([]);
   const unsavedElapsedSecondsRef = useRef(0);
+  const totalElapsedSecondsRef = useRef(0);
   const didCompleteSessionRef = useRef(false);
   const { data: focusRows } = useLiveQuery(
     db.select().from(dailyFocus).where(eq(dailyFocus.date, todayKey)).limit(1),
@@ -122,9 +131,11 @@ export default function FocusScreen() {
         if (current <= 1) {
           clearInterval(interval);
           unsavedElapsedSecondsRef.current += current;
+          totalElapsedSecondsRef.current += current;
           return 0;
         }
         unsavedElapsedSecondsRef.current += 1;
+        totalElapsedSecondsRef.current += 1;
         return current - 1;
       });
     }, 1000);
@@ -191,17 +202,33 @@ export default function FocusScreen() {
     if (remainingSeconds === 0) {
       didCompleteSessionRef.current = false;
       setRemainingSeconds(FOCUS_DURATION_SECONDS);
+      totalElapsedSecondsRef.current = 0;
       setIsRunning(true);
-      void startCameraRecording();
+      if (isCameraEnabled) void startCameraRecording();
       return;
     }
     if (isRunning) {
       void persistElapsedFocusTime();
       void stopCameraRecording();
-    } else {
+    } else if (isCameraEnabled) {
       void startCameraRecording();
     }
     setIsRunning((current) => !current);
+  };
+
+  const toggleCamera = async () => {
+    if (isCameraEnabled) {
+      await stopCameraRecording();
+      cameraReadyRef.current = false;
+      setIsCameraEnabled(false);
+      return;
+    }
+
+    if (!cameraPermission?.granted) {
+      const permission = await requestCameraPermission();
+      if (!permission.granted) return;
+    }
+    setIsCameraEnabled(true);
   };
 
   const finishFocusSession = async () => {
@@ -214,6 +241,7 @@ export default function FocusScreen() {
     await stopCameraRecording();
     let composedVideoUri: string | undefined;
     if (recordedSegmentsRef.current.length > 0 && OnePerVideoComposer) {
+      const recordedDurationSeconds = Math.max(1, totalElapsedSecondsRef.current);
       const logo = Asset.fromModule(
         require("@/assets/images/new_logo_transparent.png"),
       );
@@ -221,10 +249,10 @@ export default function FocusScreen() {
       try {
         const composedVideoPath = await OnePerVideoComposer.composeAsync({
           videoUris: recordedSegmentsRef.current,
-          speed: videoSpeed,
+          speed: getTimelapseSpeed(recordedDurationSeconds),
           goal: goalText,
           logoUri: logo.localUri ?? logo.uri,
-          durationSeconds: FOCUS_DURATION_SECONDS,
+          durationSeconds: recordedDurationSeconds,
         });
         composedVideoUri = composedVideoPath.startsWith("file://")
           ? composedVideoPath
@@ -273,21 +301,23 @@ export default function FocusScreen() {
           ),
           headerRight: () => (
             <Pressable
-              onPress={finishFocusSession}
+              style={[s.cameraToggle, isRecording && s.cameraToggleRecording]}
+              onPress={() => void toggleCamera()}
               hitSlop={10}
               accessibilityRole="button"
-              accessibilityLabel="Finish focus session"
+              accessibilityLabel={isCameraEnabled ? "Turn camera off" : "Turn camera on"}
             >
               <Ionicons
-                name="checkmark"
+                name={isCameraEnabled ? "videocam" : "videocam-off"}
                 size={22}
-                color={hasGoal ? palette.orange : C.iconSecondary}
+                color={isRecording ? palette.white : isCameraEnabled ? palette.orange : C.iconSecondary}
               />
             </Pressable>
           ),
         }}
       />
-      {cameraPermission?.granted ? (
+      <GradientBackground />
+      {cameraPermission?.granted && isCameraEnabled ? (
         <CameraView
           ref={cameraRef}
           style={s.camera}
@@ -306,7 +336,6 @@ export default function FocusScreen() {
         />
       ) : null}
       <View style={s.cameraShade} pointerEvents="none" />
-      <GradientBackground />
       <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
         <Aurora
           height={420}
@@ -318,11 +347,6 @@ export default function FocusScreen() {
       <SafeAreaView style={s.safeArea}>
         <View style={s.content}>
           <Text style={s.goal}>{goalText}</Text>
-          <Text style={s.subtitle}>Stay focused. Do one thing.</Text>
-
-          {isRecording ? (
-            <Text style={s.recordingLabel}>● Recording</Text>
-          ) : null}
 
           <View style={s.ringWrap}>
             <Svg width={RING_SIZE} height={RING_SIZE} style={s.ringSvg}>
@@ -353,7 +377,14 @@ export default function FocusScreen() {
             </View>
           </View>
 
-          <Pressable style={s.timerButton} onPress={toggleTimer}>
+        </View>
+        <View style={s.bottomControls}>
+          <Pressable
+            style={s.timerButton}
+            onPress={toggleTimer}
+            accessibilityRole="button"
+            accessibilityLabel={isRunning ? "Pause timer" : "Start timer"}
+          >
             <Ionicons
               name={
                 remainingSeconds === 0
@@ -366,32 +397,14 @@ export default function FocusScreen() {
               color={palette.white}
             />
           </Pressable>
-          <Text style={s.timerHint}>
-            {isRunning
-              ? "Pause timer and recording"
-              : "Start timer and recording"}
-          </Text>
-          <View style={s.speedRow}>
-            {[1, 2, 4].map((speed) => (
-              <Pressable
-                key={speed}
-                onPress={() => setVideoSpeed(speed)}
-                style={[
-                  s.speedButton,
-                  videoSpeed === speed && s.speedButtonActive,
-                ]}
-              >
-                <Text
-                  style={[
-                    s.speedText,
-                    videoSpeed === speed && s.speedTextActive,
-                  ]}
-                >
-                  {speed}×
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          <Pressable
+            style={[s.doneButton, !hasGoal && s.doneButtonDisabled]}
+            onPress={() => void finishFocusSession()}
+            accessibilityRole="button"
+            accessibilityLabel="Finish focus session"
+          >
+            <Ionicons name="checkmark" size={25} color={palette.white} />
+          </Pressable>
         </View>
       </SafeAreaView>
     </View>
@@ -406,6 +419,14 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       ...StyleSheet.absoluteFill,
       backgroundColor: "rgba(0,0,0,0.22)",
     },
+    cameraToggle: {
+      width: 38,
+      height: 38,
+      borderRadius: 999,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    cameraToggleRecording: { backgroundColor: "#D92D45" },
     aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.72 },
     auroraLight: { opacity: 0.55 },
     safeArea: {
@@ -465,33 +486,27 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       width: 64,
       height: 64,
       borderRadius: 999,
-      marginTop: 32,
       backgroundColor: palette.orange,
       alignItems: "center",
       justifyContent: "center",
     },
-    timerHint: {
-      color: C.textTertiary,
-      fontSize: 12,
-      fontWeight: "600",
-      marginTop: 10,
+    bottomControls: {
+      position: "absolute",
+      left: 24,
+      right: 24,
+      bottom: 18,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
     },
-    speedRow: { flexDirection: "row", gap: 8, marginTop: 18 },
-    speedButton: {
-      minWidth: 44,
-      paddingVertical: 7,
-      paddingHorizontal: 10,
+    doneButton: {
+      width: 64,
+      height: 64,
       borderRadius: 999,
       alignItems: "center",
-      backgroundColor: "rgba(0,0,0,0.28)",
-      borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.18)",
-    },
-    speedButtonActive: {
+      justifyContent: "center",
       backgroundColor: palette.orange,
-      borderColor: palette.orange,
     },
-    speedText: { color: C.textSecondary, fontSize: 12, fontWeight: "700" },
-    speedTextActive: { color: palette.white },
+    doneButtonDisabled: { opacity: 0.45 },
   });
 }
