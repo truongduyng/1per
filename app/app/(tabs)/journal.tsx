@@ -1,6 +1,7 @@
 import { AddJournalEntryModal } from "@/components/AddJournalEntryModal";
 import GradientBackground from "@/components/GradientBackground";
 import { dailyFocus, db, habitCompletions, habits, journalEntries, journalEntryOps } from "@/lib/db";
+import { deleteBackedUpJournalPhoto } from "@/lib/cloudSync";
 import { resolveIoniconName } from "@/lib/iconNames";
 import { useTheme } from "@/hooks/useTheme";
 import { Ionicons } from "@expo/vector-icons";
@@ -120,7 +121,10 @@ export default function JournalScreen() {
       {
         text: "Delete",
         style: "destructive",
-        onPress: () => void journalEntryOps.delete(id),
+        onPress: () => {
+          deleteBackedUpJournalPhoto(id);
+          void journalEntryOps.delete(id);
+        },
       },
     ]);
   };

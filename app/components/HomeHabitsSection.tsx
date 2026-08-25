@@ -1,6 +1,7 @@
 import { HabitCheckInModal, type HabitCheckInDraft } from "@/components/HabitCheckInModal";
 import { completionOps, habitCompletions, habits } from "@/lib/db";
 import { deleteHabitPhoto } from "@/lib/habitPhotos";
+import { deleteBackedUpHabitPhoto } from "@/lib/cloudSync";
 import { useTheme } from "@/hooks/useTheme";
 import { resolveIoniconName } from "@/lib/iconNames";
 import * as Haptics from "expo-haptics";
@@ -68,7 +69,11 @@ export function HomeHabitsSection({
   };
 
   const undoCheckIn = async (habitId: number) => {
+    const completionId = allCompletions.find(
+      (completion) => completion.habitId === habitId && completion.date === todayKey,
+    )?.id;
     deleteHabitPhoto(todayCheckIns[habitId]?.photoUri);
+    if (completionId) deleteBackedUpHabitPhoto(completionId);
     await completionOps.markUndone(habitId, today);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };

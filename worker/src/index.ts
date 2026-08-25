@@ -1,6 +1,7 @@
 interface Env {
   DB: D1Database;
   AI: Ai;
+  MEDIA: R2Bucket;
   APPLE_BUNDLE_ID: string;
 }
 
@@ -19,7 +20,7 @@ interface OnboardingSubmission {
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
@@ -142,6 +143,68 @@ async function handleSync(request: Request, env: Env) {
     `INSERT INTO user_snapshots (user_id, snapshot, updated_at) VALUES (?, ?, datetime('now'))
      ON CONFLICT(user_id) DO UPDATE SET snapshot = excluded.snapshot, updated_at = excluded.updated_at`,
   ).bind(userId, serialized).run();
+  return json({ ok: true });
+}
+
+const MEDIA_KINDS: Record<string, { contentType: string; maxBytes: number }> = {
+  focus: { contentType: "video/mp4", maxBytes: 100_000_000 },
+  "habit-photo": { contentType: "image/jpeg", maxBytes: 15_000_000 },
+  "journal-photo": { contentType: "image/jpeg", maxBytes: 15_000_000 },
+};
+
+function isMediaId(value: string) {
+  return /^[a-zA-Z0-9_-]{1,64}$/.test(value);
+}
+
+function mediaKey(userId: string, kind: string, id: string) {
+  return `${userId}/${kind}/${id}`;
+}
+
+async function handleMediaGet(request: Request, env: Env, kind: string, id: string) {
+  const config = MEDIA_KINDS[kind];
+  if (!config) return badRequest("Unknown media kind.");
+  const userId = await authenticate(request, env);
+  if (!userId) return json({ ok: false, error: "Invalid Apple identity token." }, { status: 401 });
+  if (!isMediaId(id)) return badRequest("Invalid media id.");
+
+  const object = await env.MEDIA.get(mediaKey(userId, kind, id));
+  if (!object) return json({ ok: false, error: "Not found." }, { status: 404 });
+
+  return new Response(object.body, {
+    headers: {
+      ...CORS_HEADERS,
+      "Content-Type": object.httpMetadata?.contentType ?? config.contentType,
+      "Content-Length": String(object.size),
+    },
+  });
+}
+
+async function handleMediaPut(request: Request, env: Env, kind: string, id: string) {
+  const config = MEDIA_KINDS[kind];
+  if (!config) return badRequest("Unknown media kind.");
+  const userId = await authenticate(request, env);
+  if (!userId) return json({ ok: false, error: "Invalid Apple identity token." }, { status: 401 });
+  if (!isMediaId(id)) return badRequest("Invalid media id.");
+
+  const contentLength = Number(request.headers.get("Content-Length") ?? "0");
+  if (!contentLength || contentLength > config.maxBytes) {
+    return badRequest("Media is missing or too large.");
+  }
+
+  await env.MEDIA.put(mediaKey(userId, kind, id), request.body, {
+    httpMetadata: { contentType: config.contentType },
+  });
+  return json({ ok: true }, { status: 201 });
+}
+
+async function handleMediaDelete(request: Request, env: Env, kind: string, id: string) {
+  const config = MEDIA_KINDS[kind];
+  if (!config) return badRequest("Unknown media kind.");
+  const userId = await authenticate(request, env);
+  if (!userId) return json({ ok: false, error: "Invalid Apple identity token." }, { status: 401 });
+  if (!isMediaId(id)) return badRequest("Invalid media id.");
+
+  await env.MEDIA.delete(mediaKey(userId, kind, id));
   return json({ ok: true });
 }
 
@@ -317,6 +380,14 @@ export default {
 
       if ((request.method === "GET" || request.method === "PUT") && url.pathname === "/api/sync") {
         return handleSync(request, env);
+      }
+
+      const mediaMatch = url.pathname.match(/^\/api\/media\/([^/]+)\/([^/]+)$/);
+      if (mediaMatch) {
+        const [, kind, id] = mediaMatch;
+        if (request.method === "GET") return handleMediaGet(request, env, kind, id);
+        if (request.method === "PUT") return handleMediaPut(request, env, kind, id);
+        if (request.method === "DELETE") return handleMediaDelete(request, env, kind, id);
       }
 
       return json({ ok: false, error: "Not found." }, { status: 404 });

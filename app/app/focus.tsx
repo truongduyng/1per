@@ -257,12 +257,6 @@ export default function FocusScreen() {
         composedVideoUri = composedVideoPath.startsWith("file://")
           ? composedVideoPath
           : `file://${composedVideoPath}`;
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(composedVideoUri, {
-            mimeType: "video/mp4",
-            dialogTitle: "Share your 1Per focus video",
-          });
-        }
       } catch {
         // The raw segment remains available if export fails.
       }
@@ -270,6 +264,20 @@ export default function FocusScreen() {
     await dailyFocusOps.markComplete(composedVideoUri);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
+
+    if (composedVideoUri) {
+      Sharing.isAvailableAsync()
+        .then((available) => {
+          if (!available) return;
+          return Sharing.shareAsync(composedVideoUri!, {
+            mimeType: "video/mp4",
+            dialogTitle: "Share your 1Per focus video",
+          });
+        })
+        .catch(() => {
+          // Sharing is a best-effort convenience; the video is already saved to Journal.
+        });
+    }
   };
 
   const s = makeStyles(C);

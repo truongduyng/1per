@@ -1,8 +1,19 @@
-import { createSyncSession, downloadCloudSnapshot, uploadCloudSnapshot } from "./backend";
+import {
+  createSyncSession,
+  deleteMedia,
+  downloadCloudSnapshot,
+  downloadMedia,
+  uploadCloudSnapshot,
+  uploadMedia,
+  type MediaKind,
+} from "./backend";
 import { getSessionToken, loadSessionToken, setSessionToken, signInWithApple } from "./appleAuth";
 import { exportSnapshot, importSnapshot, type DataSnapshot } from "./db/snapshot";
 import { subscribeToDataChanges } from "./db/changeListener";
 import { storage, STORAGE_KEYS } from "./storage";
+import { Directory, File, Paths } from "expo-file-system";
+import { db, dailyFocus, habitCompletions, journalEntries } from "./db";
+import { eq } from "drizzle-orm";
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let syncInFlight: Promise<void> | null = null;
@@ -32,6 +43,7 @@ export async function signInAndRestore() {
   const remote = await downloadCloudSnapshot(token);
   if (!remote) throw new Error("No cloud backup exists for this Apple account.");
   await importSnapshot(remote as DataSnapshot);
+  await restoreMediaFiles();
   return identity;
 }
 
@@ -52,6 +64,7 @@ export async function signInAndSync() {
   const remote = await downloadCloudSnapshot(token);
   if (remote) {
     await importSnapshot(remote as DataSnapshot);
+    await restoreMediaFiles();
   } else {
     await syncNow();
   }
@@ -75,6 +88,7 @@ export async function restoreNow() {
     const remote = await downloadCloudSnapshot(token);
     if (!remote) throw new Error("No cloud backup exists for this Apple account.");
     await importSnapshot(remote as DataSnapshot);
+    await restoreMediaFiles();
   } else {
     await signInAndRestore();
   }
@@ -84,8 +98,9 @@ export async function syncNow() {
   const token = getSessionToken();
   if (!token || syncInFlight) return syncInFlight;
   syncInFlight = uploadCloudSnapshot(token, await exportSnapshot())
-    .then(() => {
+    .then(async () => {
       storage.set(STORAGE_KEYS.LAST_BACKUP_AT, new Date().toISOString());
+      await backupMediaFiles();
     })
     .finally(() => { syncInFlight = null; });
   return syncInFlight;
@@ -97,4 +112,107 @@ export function startCloudSyncListener() {
     if (syncTimer) clearTimeout(syncTimer);
     syncTimer = setTimeout(() => { void syncNow(); }, 1500);
   });
+}
+
+// Uploads every local media file referenced by the DB. Runs as part of the
+// regular backup cycle rather than at save time, since R2 PUT overwrites are
+// idempotent and re-uploading unchanged files is cheap and simple.
+async function backupMediaFiles() {
+  const token = getSessionToken();
+  if (!token) return;
+
+  const focusRows = await db.select().from(dailyFocus);
+  for (const row of focusRows) {
+    if (row.videoUri) await backupMedia("focus", row.date, row.videoUri);
+  }
+
+  const habitPhotoRows = await db.select().from(habitCompletions);
+  for (const row of habitPhotoRows) {
+    if (row.photoUri) await backupMedia("habit-photo", String(row.id), row.photoUri);
+  }
+
+  const journalPhotoRows = await db.select().from(journalEntries);
+  for (const row of journalPhotoRows) {
+    if (row.photoUri) await backupMedia("journal-photo", String(row.id), row.photoUri);
+  }
+}
+
+// Best-effort: never blocks or throws into the caller's flow, since local
+// storage (not the cloud copy) is the source of truth.
+async function backupMedia(kind: MediaKind, id: string, fileUri: string) {
+  const token = getSessionToken();
+  if (!token) return;
+  if (!new File(fileUri).exists) return;
+  try {
+    await uploadMedia(token, kind, id, fileUri);
+  } catch (error) {
+    console.warn(`Failed to back up ${kind} media:`, error);
+  }
+}
+
+export function deleteBackedUpHabitPhoto(id: number) {
+  const token = getSessionToken();
+  if (!token) return;
+  void deleteMedia(token, "habit-photo", String(id)).catch(() => {});
+}
+
+export function deleteBackedUpJournalPhoto(id: number) {
+  const token = getSessionToken();
+  if (!token) return;
+  void deleteMedia(token, "journal-photo", String(id)).catch(() => {});
+}
+
+// After restoring a snapshot on a fresh install, local file:// URIs recorded
+// in the DB no longer point to real files. Re-download anything backed up
+// and rewrite the URI to a fresh local copy; drop the reference otherwise.
+export async function restoreMediaFiles() {
+  const token = getSessionToken();
+  if (!token) return;
+
+  const focusRows = await db.select().from(dailyFocus);
+  for (const row of focusRows) {
+    if (!row.videoUri) continue;
+    await restoreOne("focus", row.date, row.videoUri, "focus-videos", `focus-${row.date}.mp4`, async (uri) => {
+      await db.update(dailyFocus).set({ videoUri: uri ?? null }).where(eq(dailyFocus.date, row.date));
+    });
+  }
+
+  const habitPhotoRows = await db.select().from(habitCompletions);
+  for (const row of habitPhotoRows) {
+    if (!row.photoUri) continue;
+    await restoreOne("habit-photo", String(row.id), row.photoUri, "habit-photos", `habit-${row.id}.jpg`, async (uri) => {
+      await db.update(habitCompletions).set({ photoUri: uri ?? null }).where(eq(habitCompletions.id, row.id));
+    });
+  }
+
+  const journalPhotoRows = await db.select().from(journalEntries);
+  for (const row of journalPhotoRows) {
+    if (!row.photoUri) continue;
+    await restoreOne("journal-photo", String(row.id), row.photoUri, "journal-photos", `journal-${row.id}.jpg`, async (uri) => {
+      await db.update(journalEntries).set({ photoUri: uri ?? null }).where(eq(journalEntries.id, row.id));
+    });
+  }
+}
+
+async function restoreOne(
+  kind: MediaKind,
+  id: string,
+  currentUri: string,
+  dirName: string,
+  fileName: string,
+  setUri: (uri: string | null) => Promise<void>,
+) {
+  const token = getSessionToken();
+  if (!token) return;
+  if (new File(currentUri).exists) return; // local file already present, nothing to do
+
+  try {
+    const dir = new Directory(Paths.document, dirName);
+    if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
+    const dest = new File(dir, fileName);
+    const found = await downloadMedia(token, kind, id, dest.uri);
+    await setUri(found ? dest.uri : null);
+  } catch (error) {
+    console.warn(`Failed to restore ${kind} media:`, error);
+  }
 }

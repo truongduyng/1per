@@ -10,5 +10,9 @@ binding = "DB"
 database_name = "kadoze"
 database_id = "d48a71d0-43bf-4ed0-ac16-cb1e6a856b57"
 
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "oneper"
+
 [vars]
 APPLE_BUNDLE_ID = "app.kadoze.yikudo"
