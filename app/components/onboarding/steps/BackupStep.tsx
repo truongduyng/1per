@@ -44,10 +44,11 @@ export function BackupStep({ onNext }: { onNext: () => void }) {
 
         <View>
           <Text style={s.headline}>
-            Giữ lại những gì bạn đã <Text style={s.highlight}>xây dựng.</Text>
+            Keep what you&apos;ve <Text style={s.highlight}>built.</Text>
           </Text>
           <Text style={s.body}>
-            Đăng nhập với Apple để bảo vệ hồ sơ, mục tiêu và tiến độ của bạn khi đổi máy hoặc cài lại ứng dụng.
+            Sign in with Apple to protect your profile, goals, and progress when you switch devices or reinstall the
+            app.
           </Text>
         </View>
 
@@ -57,8 +58,8 @@ export function BackupStep({ onNext }: { onNext: () => void }) {
               <Ionicons name="cloud-done-outline" size={27} color={palette.orange} />
             </View>
             <View style={s.benefitCopy}>
-              <Text style={s.benefitTitle}>Dữ liệu luôn an toàn</Text>
-              <Text style={s.benefitSubtitle}>Các mục tiêu và thói quen được sao lưu tự động.</Text>
+              <Text style={s.benefitTitle}>Your data stays safe</Text>
+              <Text style={s.benefitSubtitle}>Your goals and habits are backed up automatically.</Text>
             </View>
           </View>
           <View style={s.benefitRow}>
@@ -66,8 +67,8 @@ export function BackupStep({ onNext }: { onNext: () => void }) {
               <Ionicons name="phone-portrait-outline" size={27} color={palette.orange} />
             </View>
             <View style={s.benefitCopy}>
-              <Text style={s.benefitTitle}>Tiếp tục hành trình</Text>
-              <Text style={s.benefitSubtitle}>Khôi phục tiến độ khi bạn cài lại ứng dụng.</Text>
+              <Text style={s.benefitTitle}>Continue your journey</Text>
+              <Text style={s.benefitSubtitle}>Restore your progress when you reinstall the app.</Text>
             </View>
           </View>
         </View>
@@ -80,10 +81,10 @@ export function BackupStep({ onNext }: { onNext: () => void }) {
           disabled={isSigningIn}
           activeOpacity={0.85}
         >
-          <Text style={s.btnText}>{isSigningIn ? "Đang đăng nhập…" : "Đăng nhập với Apple"}</Text>
+          <Text style={s.btnText}>{isSigningIn ? "Signing in…" : "Sign in with Apple"}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={onNext} activeOpacity={0.7} hitSlop={12}>
-          <Text style={s.skipText}>Để sau</Text>
+          <Text style={s.skipText}>Later</Text>
         </TouchableOpacity>
       </View>
     </View>
