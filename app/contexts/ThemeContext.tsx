@@ -11,7 +11,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType>({
-  preference: 'dark',
+  preference: 'system',
   colorScheme: 'dark',
   setPreference: () => {},
 });
@@ -21,7 +21,7 @@ const STORAGE_KEY = 'theme_preference';
 export function ThemePreferenceProvider({ children }: { children: React.ReactNode }) {
   const systemColorScheme = useSystemColorScheme();
   const [preference, setPreferenceState] = useState<ThemePreference>(
-    (storage.getString(STORAGE_KEY) as ThemePreference) ?? 'dark'
+    (storage.getString(STORAGE_KEY) as ThemePreference) ?? 'system'
   );
 
   const colorScheme: 'light' | 'dark' =
