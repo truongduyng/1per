@@ -13,6 +13,7 @@ export type CloudSnapshot = {
   habit_completions: Record<string, unknown>[];
   daily_focus: Record<string, unknown>[];
   daily_affirmations: Record<string, unknown>[];
+  journal_entries?: Record<string, unknown>[];
   settings?: Record<string, unknown>;
 };
 

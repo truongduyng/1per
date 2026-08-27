@@ -10,6 +10,9 @@ export type DataSnapshot = {
   habit_completions: Record<string, unknown>[];
   daily_focus: Record<string, unknown>[];
   daily_affirmations: Record<string, unknown>[];
+  // Optional so snapshots uploaded before freestyle journal entries were
+  // backed up still import cleanly - treated as empty when absent.
+  journal_entries?: Record<string, unknown>[];
   // Device-local preferences (theme, reminders, app lock). Optional and
   // ignored by importSnapshot - cloudSync attaches/applies it separately
   // since it lives in MMKV, not these SQLite tables.
@@ -23,6 +26,7 @@ const tables = [
   "habit_completions",
   "daily_focus",
   "daily_affirmations",
+  "journal_entries",
 ] as const;
 
 export async function exportSnapshot(): Promise<DataSnapshot> {
@@ -99,6 +103,14 @@ export async function importSnapshot(snapshot: DataSnapshot) {
          VALUES (?, ?, ?, ?, ?, ?)`,
         value(row, "id"), value(row, "date"), value(row, "text"), value(row, "source"),
         value(row, "created_at"), value(row, "updated_at"),
+      );
+    }
+    for (const row of snapshot.journal_entries ?? []) {
+      await expoDb.runAsync(
+        `INSERT INTO journal_entries (id, date, note, photo_uri, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        value(row, "id"), value(row, "date"), value(row, "note"), value(row, "photo_uri"),
+        value(row, "created_at"),
       );
     }
   });
