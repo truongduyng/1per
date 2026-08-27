@@ -10,6 +10,10 @@ export type DataSnapshot = {
   habit_completions: Record<string, unknown>[];
   daily_focus: Record<string, unknown>[];
   daily_affirmations: Record<string, unknown>[];
+  // Device-local preferences (theme, reminders, app lock). Optional and
+  // ignored by importSnapshot - cloudSync attaches/applies it separately
+  // since it lives in MMKV, not these SQLite tables.
+  settings?: Record<string, unknown>;
 };
 
 const tables = [

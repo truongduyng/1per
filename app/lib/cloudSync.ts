@@ -9,6 +9,7 @@ import {
 } from "./backend";
 import { getSessionToken, loadSessionToken, setSessionToken, signInWithApple } from "./appleAuth";
 import { exportSnapshot, importSnapshot, type DataSnapshot } from "./db/snapshot";
+import { exportSettingsSnapshot, importSettingsSnapshot } from "./settingsSync";
 import { subscribeToDataChanges } from "./db/changeListener";
 import { storage, STORAGE_KEYS } from "./storage";
 import { Directory, File, Paths } from "expo-file-system";
@@ -53,6 +54,7 @@ export async function restoreCloudOnStartup(): Promise<boolean | null> {
   if (!remote) return false;
 
   await importSnapshot(remote as DataSnapshot);
+  await importSettingsSnapshot((remote as DataSnapshot).settings);
   await restoreMediaFiles();
   return true;
 }
@@ -65,6 +67,7 @@ export async function signInAndRestore() {
   const remote = await downloadCloudSnapshot(token);
   if (!remote) throw new Error("No cloud backup exists for this Apple account.");
   await importSnapshot(remote as DataSnapshot);
+  await importSettingsSnapshot((remote as DataSnapshot).settings);
   await restoreMediaFiles();
   return identity;
 }
@@ -86,6 +89,7 @@ export async function signInAndSync() {
   const remote = await downloadCloudSnapshot(token);
   if (remote) {
     await importSnapshot(remote as DataSnapshot);
+    await importSettingsSnapshot((remote as DataSnapshot).settings);
     await restoreMediaFiles();
   } else {
     await syncNow();
@@ -110,6 +114,7 @@ export async function restoreNow() {
     const remote = await downloadCloudSnapshot(token);
     if (!remote) throw new Error("No cloud backup exists for this Apple account.");
     await importSnapshot(remote as DataSnapshot);
+    await importSettingsSnapshot((remote as DataSnapshot).settings);
     await restoreMediaFiles();
   } else {
     await signInAndRestore();
@@ -119,7 +124,9 @@ export async function restoreNow() {
 export async function syncNow() {
   const token = getSessionToken();
   if (!token || syncInFlight) return syncInFlight;
-  syncInFlight = uploadCloudSnapshot(token, await exportSnapshot())
+  const snapshot = await exportSnapshot();
+  snapshot.settings = exportSettingsSnapshot();
+  syncInFlight = uploadCloudSnapshot(token, snapshot)
     .then(async () => {
       storage.set(STORAGE_KEYS.LAST_BACKUP_AT, new Date().toISOString());
       await backupMediaFiles();
