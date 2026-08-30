@@ -120,7 +120,6 @@ export function HomeHabitsSection({
           ) : (
             todayHabits.map((habit, index) => {
               const done = doneIds.has(habit.id);
-              const checkIn = todayCheckIns[habit.id];
               return (
                 <View key={habit.id}>
                   {index > 0 && <View style={s.divider} />}
@@ -148,14 +147,6 @@ export function HomeHabitsSection({
                         <Text style={s.rowSubtitle}>{habit.subtitle}</Text>
                       ) : null}
                     </View>
-                    {checkIn?.photoUri ? (
-                      <Ionicons
-                        name="image-outline"
-                        size={16}
-                        color={C.textQuaternary}
-                        style={s.checkInBadge}
-                      />
-                    ) : null}
                     <View style={[s.checkbox, done && s.checkboxDone]}>
                       {done && <Ionicons name="checkmark" size={13} color={C.textInverse} />}
                     </View>
@@ -220,7 +211,6 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     rowTitle: { fontSize: 15, fontWeight: "600", color: C.textPrimary },
     rowTitleDone: { color: C.textTertiary, textDecorationLine: "line-through" },
     rowSubtitle: { fontSize: 12, color: C.textQuaternary, marginTop: 2 },
-    checkInBadge: { marginRight: 10 },
     checkbox: {
       width: 20,
       height: 20,

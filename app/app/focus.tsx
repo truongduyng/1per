@@ -14,7 +14,7 @@ import { eq } from "drizzle-orm";
 import { Asset } from "expo-asset";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
-import * as Sharing from "expo-sharing";
+import * as MediaLibrary from "expo-media-library";
 import { router, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -266,16 +266,13 @@ export default function FocusScreen() {
     router.back();
 
     if (composedVideoUri) {
-      Sharing.isAvailableAsync()
-        .then((available) => {
-          if (!available) return;
-          return Sharing.shareAsync(composedVideoUri!, {
-            mimeType: "video/mp4",
-            dialogTitle: "Share your 1Per focus video",
-          });
+      MediaLibrary.requestPermissionsAsync()
+        .then((permission) => {
+          if (!permission.granted) return;
+          return MediaLibrary.saveToLibraryAsync(composedVideoUri!);
         })
         .catch(() => {
-          // Sharing is a best-effort convenience; the video is already saved to Journal.
+          // Saving to Photos is a best-effort convenience; the video is already in Journal.
         });
     }
   };
@@ -343,15 +340,19 @@ export default function FocusScreen() {
           }}
         />
       ) : null}
-      <View style={s.cameraShade} pointerEvents="none" />
-      <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
-        <Aurora
-          height={420}
-          intensity={isLight ? 0.5 : 0.8}
-          auroraColors={isLight ? [...AURORA_LIGHT_AURORA_COLORS] : undefined}
-          skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
-        />
-      </View>
+      {!isCameraEnabled && (
+        <>
+          <View style={s.cameraShade} pointerEvents="none" />
+          <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
+            <Aurora
+              height={420}
+              intensity={isLight ? 0.5 : 0.8}
+              auroraColors={isLight ? [...AURORA_LIGHT_AURORA_COLORS] : undefined}
+              skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
+            />
+          </View>
+        </>
+      )}
       <SafeAreaView style={s.safeArea}>
         <View style={s.content}>
           <Text style={s.goal}>{goalText}</Text>
@@ -422,7 +423,7 @@ export default function FocusScreen() {
 function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
   return StyleSheet.create({
     container: { flex: 1 },
-    camera: { ...StyleSheet.absoluteFill, opacity: 0.58 },
+    camera: { ...StyleSheet.absoluteFill },
     cameraShade: {
       ...StyleSheet.absoluteFill,
       backgroundColor: "rgba(0,0,0,0.22)",

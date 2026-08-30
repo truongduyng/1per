@@ -117,9 +117,16 @@ async function handleCreateSession(request: Request, env: Env) {
 function isSnapshot(value: unknown): value is Record<string, unknown> {
   if (!value || typeof value !== "object") return false;
   const snapshot = value as Record<string, unknown>;
-  return snapshot.version === 1 &&
-    ["profiles", "challenges", "habits", "habit_completions", "daily_focus", "daily_affirmations"]
-      .every((key) => Array.isArray(snapshot[key]));
+  if (snapshot.version !== 1) return false;
+  if (
+    !["profiles", "challenges", "habits", "habit_completions", "daily_focus", "daily_affirmations"]
+      .every((key) => Array.isArray(snapshot[key]))
+  ) {
+    return false;
+  }
+  // Optional: added after freestyle journal entries started being backed up.
+  if (snapshot.journal_entries !== undefined && !Array.isArray(snapshot.journal_entries)) return false;
+  return true;
 }
 
 async function handleSync(request: Request, env: Env) {

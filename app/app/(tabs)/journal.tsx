@@ -8,26 +8,72 @@ import { Ionicons } from "@expo/vector-icons";
 import { desc, isNotNull, or } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import React, { useMemo, useState } from "react";
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Sharing from "expo-sharing";
+import { VideoView, useVideoPlayer } from "expo-video";
 
 type TimelineItem =
   | { kind: "habit"; id: string; createdAt: number; entry: typeof habitCompletions.$inferSelect }
   | { kind: "focus"; id: string; createdAt: number; entry: typeof dailyFocus.$inferSelect }
   | { kind: "journal"; id: string; createdAt: number; entry: typeof journalEntries.$inferSelect };
 
-async function openFocusVideo(uri: string) {
-  try {
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, { mimeType: "video/mp4", dialogTitle: "Your 1Per focus video" });
-      return;
-    }
-  } catch {
-    // fall through to error alert below
-  }
-  Alert.alert("Can't open video", "This focus video is no longer available on your device.");
+function FocusVideoPlayerModal({
+  uri,
+  onClose,
+}: {
+  uri: string | null;
+  onClose: () => void;
+}) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false;
+    p.play();
+  });
+
+  return (
+    <Modal
+      visible={!!uri}
+      animationType="fade"
+      presentationStyle="fullScreen"
+      onRequestClose={onClose}
+    >
+      <View style={playerStyles.container}>
+        {uri ? (
+          <VideoView
+            style={playerStyles.video}
+            player={player}
+            nativeControls
+            contentFit="contain"
+          />
+        ) : null}
+        <Pressable
+          style={playerStyles.closeBtn}
+          onPress={onClose}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel="Close video"
+        >
+          <Ionicons name="close" size={22} color="#fff" />
+        </Pressable>
+      </View>
+    </Modal>
+  );
 }
+
+const playerStyles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#000", justifyContent: "center" },
+  video: { flex: 1 },
+  closeBtn: {
+    position: "absolute",
+    top: 56,
+    right: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+});
 
 function parseDateKey(key: string): Date {
   const [year, month, day] = key.split("-").map(Number);
@@ -71,6 +117,7 @@ export default function JournalScreen() {
   );
 
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [playingVideoUri, setPlayingVideoUri] = useState<string | null>(null);
 
   const habitById = useMemo(() => {
     const map = new Map<number, (typeof habits.$inferSelect)>();
@@ -202,7 +249,7 @@ export default function JournalScreen() {
                             ) : null}
                             <Pressable
                               style={s.videoThumb}
-                              onPress={() => void openFocusVideo(entry.videoUri!)}
+                              onPress={() => setPlayingVideoUri(entry.videoUri!)}
                               accessibilityRole="button"
                               accessibilityLabel="Play focus session video"
                             >
@@ -312,6 +359,11 @@ export default function JournalScreen() {
         visible={addModalVisible}
         onClose={() => setAddModalVisible(false)}
         onSave={handleSaveEntry}
+      />
+
+      <FocusVideoPlayerModal
+        uri={playingVideoUri}
+        onClose={() => setPlayingVideoUri(null)}
       />
     </View>
   );

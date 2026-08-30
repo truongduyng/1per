@@ -81,6 +81,14 @@
       "expo-sharing",
       "expo-sqlite",
       "expo-asset",
+      "expo-video",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "$(PRODUCT_NAME) saves your focus session videos to your photo library.",
+          "savePhotosPermission": "$(PRODUCT_NAME) saves your focus session videos to your photo library."
+        }
+      ],
       [
         "react-native-device-activity",
         {
