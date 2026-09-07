@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import { profileOps, dailyFocusOps, challengeOps } from "@/lib/db";
 import { submitOnboarding } from "@/lib/backend";
 import { storage } from "@/lib/storage";
-import { GAME_AVATARS, type GameAvatarId } from "@/lib/avatarCatalog";
 import type { IoniconName } from "@/lib/iconNames";
 import { PRESET_CHALLENGES } from "@/lib/presetChallenges";
 
@@ -65,7 +64,7 @@ interface OnboardingDraft {
   selectedChallengeId: string;
   referralSource: string;
   name: string;
-  avatar: GameAvatarId;
+  avatar: string | null;
 }
 
 const DEFAULT_ONBOARDING_DRAFT: OnboardingDraft = {
@@ -78,7 +77,7 @@ const DEFAULT_ONBOARDING_DRAFT: OnboardingDraft = {
   selectedChallengeId: "",
   referralSource: "",
   name: "",
-  avatar: GAME_AVATARS[0].id,
+  avatar: null,
 };
 
 function readOnboardingDraft(): OnboardingDraft {
@@ -101,9 +100,7 @@ function readOnboardingDraft(): OnboardingDraft {
       selectedChallengeId: draft.selectedChallengeId ?? "",
       referralSource: draft.referralSource ?? "",
       name: draft.name ?? "",
-      avatar: GAME_AVATARS.some((item) => item.id === draft.avatar)
-        ? (draft.avatar as GameAvatarId)
-        : DEFAULT_ONBOARDING_DRAFT.avatar,
+      avatar: typeof draft.avatar === "string" ? draft.avatar : DEFAULT_ONBOARDING_DRAFT.avatar,
     };
   } catch {
     return DEFAULT_ONBOARDING_DRAFT;
@@ -397,7 +394,7 @@ export function useOnboarding() {
   );
   const [referralSource, setReferralSource] = useState(initialDraft.referralSource);
   const [name, setName] = useState(initialDraft.name);
-  const [avatar, setAvatar] = useState<GameAvatarId>(initialDraft.avatar);
+  const [avatar, setAvatar] = useState<string | null>(initialDraft.avatar);
 
   useEffect(() => {
     const draft: OnboardingDraft = {
@@ -462,7 +459,7 @@ export function useOnboarding() {
       if (profile) {
         await profileOps.update(profile.id, {
           name: name.trim() || "User",
-          avatar,
+          avatar: avatar ?? null,
           onboardingCompleted: true,
         });
       }
@@ -485,7 +482,7 @@ export function useOnboarding() {
         await submitOnboarding({
           profileId: profile?.id ?? null,
           name: name.trim() || "User",
-          avatar,
+          avatar: avatar ? "photo" : "",
           painPoints,
           mainGoal,
           keystoneHabit: "",

@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
-import { Image, Keyboard, Pressable, Text, TextInput, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import React, { useState } from "react";
+import { Alert, Image, Keyboard, Pressable, Text, TextInput, View } from "react-native";
 
 import { palette } from "@/constants/theme";
-import { GAME_AVATARS, type GameAvatarId } from "@/lib/avatarCatalog";
+import { persistAvatarPhoto } from "@/lib/avatarPhoto";
 import { useTheme } from "@/hooks/useTheme";
 import { ScreenShell } from "./shared";
 import { ORANGE, makeStyles } from "./theme";
@@ -16,14 +17,47 @@ export function IdentityScreen({
   onNext,
 }: {
   name: string;
-  avatar: GameAvatarId;
+  avatar: string | null;
   onNameChange: (name: string) => void;
-  onAvatarChange: (avatar: GameAvatarId) => void;
+  onAvatarChange: (avatar: string | null) => void;
   onNext: () => void;
 }) {
   const C = useTheme();
   const s = makeStyles(C);
-  const canContinue = name.trim().length > 0 && Boolean(avatar);
+  const [isPicking, setIsPicking] = useState(false);
+  const canContinue = name.trim().length > 0;
+
+  const pickPhoto = async () => {
+    try {
+      setIsPicking(true);
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Enable photo access in Settings to add a profile picture.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (result.canceled || !result.assets?.length) return;
+
+      const stored = persistAvatarPhoto(result.assets[0].uri);
+      onAvatarChange(stored);
+    } catch (error) {
+      console.warn("Failed to pick avatar photo:", error);
+      Alert.alert("Couldn't add photo", "Please try again.");
+    } finally {
+      setIsPicking(false);
+    }
+  };
+
   return (
     <ScreenShell
       onNext={onNext}
@@ -34,7 +68,27 @@ export function IdentityScreen({
     >
       <View style={s.copyBlock}>
         <Text style={s.headline}>Make 1Per yours</Text>
-        <Text style={s.body}>Choose the character that will show up with you each day</Text>
+        <Text style={s.body}>Add a photo and tell us what to call you</Text>
+      </View>
+
+      <View style={s.avatarPickerWrap}>
+        <Pressable
+          onPress={pickPhoto}
+          disabled={isPicking}
+          style={s.avatarPickerFrame}
+        >
+          {avatar ? (
+            <Image source={{ uri: avatar }} style={s.avatarPickerImage} />
+          ) : (
+            <Ionicons name="person-outline" size={36} color={palette.white35} />
+          )}
+          <View style={s.avatarPickerBadge}>
+            <Ionicons name="camera" size={14} color="#050505" />
+          </View>
+        </Pressable>
+        <Text style={s.avatarPickerLabel}>
+          {avatar ? "Tap to change photo" : "Add a photo (optional)"}
+        </Text>
       </View>
 
       <View style={s.nameFieldWrap}>
@@ -50,31 +104,6 @@ export function IdentityScreen({
           returnKeyType="done"
           onSubmitEditing={() => Keyboard.dismiss()}
         />
-      </View>
-
-      <View style={s.avatarGrid}>
-        {GAME_AVATARS.map((item) => {
-          const active = avatar === item.id;
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => onAvatarChange(item.id)}
-              style={[s.avatarChoice, active && s.avatarChoiceActive]}
-            >
-              <View style={s.characterAvatarFrame}>
-                <Image source={item.source} style={s.characterAvatarImage} />
-                {active ? (
-                  <View style={s.avatarCheckBadge}>
-                    <Ionicons name="checkmark" size={13} color="#050505" />
-                  </View>
-                ) : null}
-              </View>
-              <Text style={[s.avatarChoiceText, active && s.avatarChoiceTextActive]}>
-                {item.name}
-              </Text>
-            </Pressable>
-          );
-        })}
       </View>
     </ScreenShell>
   );

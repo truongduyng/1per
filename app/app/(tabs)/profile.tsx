@@ -1,17 +1,22 @@
-import React, { useCallback, useMemo, useRef } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Image,
+  Keyboard,
+  Modal,
   Pressable,
   ScrollView,
   Share,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import { router } from "expo-router";
 import * as Sharing from "expo-sharing";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import ViewShot, { captureRef, type ViewShotRef } from "react-native-view-shot";
 import Svg, {
@@ -27,14 +32,14 @@ import {
   dailyFocus,
   habitCompletions,
   habits,
+  profileOps,
   profiles,
 } from "@/lib/db";
 import { DAY_NAMES } from "@/lib/performance";
 import { getTodayInLocalTimezone } from "@/lib/timezone";
 import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
-import { resolveIoniconName } from "@/lib/iconNames";
-import { getGameAvatar } from "@/lib/avatarCatalog";
+import { deleteAvatarPhoto, persistAvatarPhoto } from "@/lib/avatarPhoto";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 const CONSISTENCY_CELL = 10;
@@ -110,8 +115,74 @@ export default function ProfileScreen() {
 
   const profile = profileData?.[0];
   const displayName = profile?.name?.trim() || "User";
-  const savedAvatar = profile?.avatar?.trim();
-  const gameAvatar = getGameAvatar(savedAvatar);
+  const avatarUri = profile?.avatar?.trim() || null;
+
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [draftName, setDraftName] = useState(displayName);
+  const [draftAvatar, setDraftAvatar] = useState<string | null>(avatarUri);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isPickingAvatar, setIsPickingAvatar] = useState(false);
+
+  const openEditProfile = useCallback(() => {
+    setDraftName(displayName);
+    setDraftAvatar(avatarUri);
+    setIsEditingProfile(true);
+  }, [avatarUri, displayName]);
+
+  const closeEditProfile = useCallback(() => {
+    // Drop a photo that was picked but never saved so it doesn't orphan on disk.
+    if (draftAvatar && draftAvatar !== avatarUri) deleteAvatarPhoto(draftAvatar);
+    setIsEditingProfile(false);
+  }, [draftAvatar, avatarUri]);
+
+  const pickAvatarPhoto = useCallback(async () => {
+    try {
+      setIsPickingAvatar(true);
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert(
+          "Photo access needed",
+          "Enable photo access in Settings to change your profile picture.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (result.canceled || !result.assets?.length) return;
+
+      const stored = persistAvatarPhoto(result.assets[0].uri);
+      if (draftAvatar && draftAvatar !== avatarUri) deleteAvatarPhoto(draftAvatar);
+      setDraftAvatar(stored);
+    } catch (error) {
+      console.warn("Failed to pick avatar photo:", error);
+      Alert.alert("Couldn't add photo", "Please try again.");
+    } finally {
+      setIsPickingAvatar(false);
+    }
+  }, [draftAvatar, avatarUri]);
+
+  const saveProfile = useCallback(async () => {
+    if (!profile) return;
+    setIsSavingProfile(true);
+    try {
+      await profileOps.update(profile.id, {
+        name: draftName.trim() || "User",
+        avatar: draftAvatar,
+      });
+      if (avatarUri && avatarUri !== draftAvatar) deleteAvatarPhoto(avatarUri);
+      setIsEditingProfile(false);
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      Alert.alert("Couldn't save", "Please try again.");
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }, [avatarUri, draftAvatar, draftName, profile]);
 
   const analytics = useMemo(() => {
     const completions = allCompletions ?? [];
@@ -203,7 +274,7 @@ export default function ProfileScreen() {
     consistencyFirstDate.setDate(
       consistencyFirstDate.getDate() - consistencyFirstDate.getDay(),
     );
-    const consistencyLastDate = new Date(today.getFullYear(), 11, 31);
+    const consistencyLastDate = new Date(today);
     consistencyLastDate.setDate(
       consistencyLastDate.getDate() + (6 - consistencyLastDate.getDay()),
     );
@@ -356,8 +427,6 @@ export default function ProfileScreen() {
     };
   }, [allCompletions, allFocusRows, allHabits, today]);
 
-  const displayAvatarIcon = resolveIoniconName(savedAvatar, "person-outline");
-
   const consistencyScrollRef = useRef<ScrollView>(null);
   const consistencyViewportWidthRef = useRef(0);
   const consistencyColumns = useMemo(() => {
@@ -473,24 +542,27 @@ export default function ProfileScreen() {
       >
         <View style={s.section}>
           <View style={s.identityTop}>
-            <View style={s.identityPrimary}>
+            <Pressable style={s.identityPrimary} onPress={openEditProfile}>
               <View style={s.avatar}>
-                {gameAvatar ? (
-                  <Image source={gameAvatar.source} style={s.avatarImage} />
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={s.avatarImage} />
                 ) : (
                   <Ionicons
-                    name={displayAvatarIcon}
+                    name="person-outline"
                     size={30}
                     color={palette.orange}
                   />
                 )}
+                <View style={s.avatarEditBadge}>
+                  <Ionicons name="pencil" size={11} color="#050505" />
+                </View>
               </View>
               <View style={s.identityMeta}>
                 <Text selectable style={s.name}>
                   {displayName}
                 </Text>
               </View>
-            </View>
+            </Pressable>
             <View style={s.headerActions}>
               <Pressable
                 style={s.headerActionButton}
@@ -784,11 +856,11 @@ export default function ProfileScreen() {
           <View style={s.shareCard}>
             <View style={s.shareProfileRow}>
               <View style={s.shareAvatar}>
-                {gameAvatar ? (
-                  <Image source={gameAvatar.source} style={s.shareAvatarImage} />
+                {avatarUri ? (
+                  <Image source={{ uri: avatarUri }} style={s.shareAvatarImage} />
                 ) : (
                   <Ionicons
-                    name={displayAvatarIcon}
+                    name="person-outline"
                     size={24}
                     color={palette.orange}
                   />
@@ -842,6 +914,70 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ViewShot>
+
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isEditingProfile}
+        onRequestClose={closeEditProfile}
+      >
+        <View style={s.editOverlay}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeEditProfile} />
+          <View style={s.editSheet}>
+            <Text selectable style={s.editTitle}>
+              Edit profile
+            </Text>
+
+            <Pressable
+              style={s.editAvatarFrame}
+              onPress={pickAvatarPhoto}
+              disabled={isPickingAvatar}
+            >
+              {draftAvatar ? (
+                <Image source={{ uri: draftAvatar }} style={s.editAvatarImage} />
+              ) : (
+                <Ionicons name="person-outline" size={34} color={palette.orange} />
+              )}
+              <View style={s.avatarEditBadge}>
+                <Ionicons name="camera" size={13} color="#050505" />
+              </View>
+            </Pressable>
+
+            <TextInput
+              value={draftName}
+              onChangeText={setDraftName}
+              placeholder="Your name"
+              placeholderTextColor={C.textTertiary}
+              style={s.editNameInput}
+              selectionColor={palette.orange}
+              maxLength={32}
+              returnKeyType="done"
+              onSubmitEditing={() => Keyboard.dismiss()}
+            />
+
+            <View style={s.editActionsRow}>
+              <Pressable
+                style={[s.editButton, s.editButtonSecondary]}
+                onPress={closeEditProfile}
+                disabled={isSavingProfile}
+              >
+                <Text selectable style={s.editButtonSecondaryText}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[s.editButton, s.editButtonPrimary]}
+                onPress={saveProfile}
+                disabled={isSavingProfile || draftName.trim().length === 0}
+              >
+                <Text selectable style={s.editButtonPrimaryText}>
+                  {isSavingProfile ? "Saving…" : "Save"}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -889,11 +1025,24 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       borderColor: C.accentBorder,
       alignItems: "center",
       justifyContent: "center",
-      overflow: "hidden",
     },
     avatarImage: {
       width: "100%",
       height: "100%",
+      borderRadius: 24,
+    },
+    avatarEditBadge: {
+      position: "absolute",
+      bottom: -2,
+      right: -2,
+      width: 22,
+      height: 22,
+      borderRadius: 11,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: palette.orange,
+      borderWidth: 2,
+      borderColor: C.screenBg,
     },
     identityMeta: { flex: 1, gap: 3 },
     name: {
@@ -1196,6 +1345,88 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       color: C.textSecondary,
       fontSize: 11,
       fontWeight: "700",
+    },
+    editOverlay: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "rgba(0,0,0,0.5)",
+      paddingHorizontal: 28,
+    },
+    editSheet: {
+      width: "100%",
+      borderRadius: 28,
+      borderCurve: "continuous",
+      backgroundColor: C.cardBg,
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+      padding: 24,
+      alignItems: "center",
+      gap: 16,
+    },
+    editTitle: {
+      color: C.textPrimary,
+      fontSize: 18,
+      fontWeight: "800",
+    },
+    editAvatarFrame: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: C.accentBg,
+      borderWidth: 1,
+      borderColor: C.accentBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    editAvatarImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: 44,
+    },
+    editNameInput: {
+      width: "100%",
+      minHeight: 52,
+      borderRadius: 16,
+      borderCurve: "continuous",
+      borderWidth: 1,
+      borderColor: C.inputBorder,
+      backgroundColor: C.inputBg,
+      paddingHorizontal: 16,
+      color: C.textPrimary,
+      fontSize: 16,
+      fontWeight: "700",
+    },
+    editActionsRow: {
+      flexDirection: "row",
+      width: "100%",
+      gap: 10,
+    },
+    editButton: {
+      flex: 1,
+      minHeight: 50,
+      borderRadius: 16,
+      borderCurve: "continuous",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    editButtonSecondary: {
+      backgroundColor: C.inputBg,
+      borderWidth: 1,
+      borderColor: C.inputBorder,
+    },
+    editButtonSecondaryText: {
+      color: C.textSecondary,
+      fontSize: 15,
+      fontWeight: "700",
+    },
+    editButtonPrimary: {
+      backgroundColor: palette.orange,
+    },
+    editButtonPrimaryText: {
+      color: "#050505",
+      fontSize: 15,
+      fontWeight: "800",
     },
   });
 }

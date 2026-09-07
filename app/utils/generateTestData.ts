@@ -31,7 +31,7 @@ export const insertAllScreenshotData = async () => {
 
   await db.insert(profiles).values({
     name: "Maya",
-    avatar: "game:star-bard",
+    avatar: null,
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     onboardingCompleted: true,
     createdAt: daysAgo(habitAgeDays[0] + 4),
