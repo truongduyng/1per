@@ -33,7 +33,7 @@ export default function ProfileInitializer({
         if (!existingProfile) {
           await profileOps.create({
             name: "User",
-            avatar: "person-outline",
+            avatar: null,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             createdAt: new Date(),
           });
