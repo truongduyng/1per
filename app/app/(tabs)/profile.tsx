@@ -42,7 +42,6 @@ import { useTheme } from "@/hooks/useTheme";
 import { deleteAvatarPhoto, persistAvatarPhoto } from "@/lib/avatarPhoto";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
-const CONSISTENCY_CELL = 10;
 const CONSISTENCY_GAP = 3;
 const TREND_DAYS = 14;
 
@@ -262,19 +261,14 @@ export default function ProfileScreen() {
 
     const bestDayCount = Math.max(...weekActivity.map((item) => item.count), 1);
 
-    const earliestDates = [
-      ...habitsData.map((h) => h.createdAt.getTime()),
-      ...focusData.map((item) => item.createdAt.getTime()),
-    ];
-    const earliestCreatedAt = earliestDates.length
-      ? new Date(Math.min(...earliestDates))
-      : new Date(today);
-
-    const consistencyFirstDate = new Date(earliestCreatedAt);
+    // Full calendar year, snapped out to whole weeks (Sun-Sat) so the grid
+    // always renders a consistent number of columns regardless of when in
+    // the week Jan 1 / Dec 31 fall.
+    const consistencyFirstDate = new Date(today.getFullYear(), 0, 1);
     consistencyFirstDate.setDate(
       consistencyFirstDate.getDate() - consistencyFirstDate.getDay(),
     );
-    const consistencyLastDate = new Date(today);
+    const consistencyLastDate = new Date(today.getFullYear(), 11, 31);
     consistencyLastDate.setDate(
       consistencyLastDate.getDate() + (6 - consistencyLastDate.getDay()),
     );
@@ -427,8 +421,6 @@ export default function ProfileScreen() {
     };
   }, [allCompletions, allFocusRows, allHabits, today]);
 
-  const consistencyScrollRef = useRef<ScrollView>(null);
-  const consistencyViewportWidthRef = useRef(0);
   const consistencyColumns = useMemo(() => {
     const columns: (typeof analytics.consistencyGrid)[] = [];
     for (let i = 0; i < analytics.consistencyGrid.length; i += 7) {
@@ -437,29 +429,6 @@ export default function ProfileScreen() {
     return columns;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [analytics.consistencyGrid]);
-  const todayConsistencyWeekIndex = useMemo(() => {
-    const todayKey = formatDateKey(today);
-    const dayIndex = analytics.consistencyGrid.findIndex(
-      (item) => item.dateKey === todayKey,
-    );
-    return dayIndex >= 0 ? Math.floor(dayIndex / 7) : consistencyColumns.length - 1;
-  }, [analytics.consistencyGrid, consistencyColumns.length, today]);
-
-  const scrollConsistencyToToday = useCallback(() => {
-    const viewportWidth = consistencyViewportWidthRef.current;
-    if (!viewportWidth) return;
-
-    consistencyScrollRef.current?.scrollTo({
-      x: Math.max(
-        0,
-        todayConsistencyWeekIndex * (CONSISTENCY_CELL + CONSISTENCY_GAP) -
-          viewportWidth +
-          CONSISTENCY_CELL +
-          60,
-      ),
-      animated: false,
-    });
-  }, [todayConsistencyWeekIndex]);
 
   const trendChart = useMemo(
     () =>
@@ -645,28 +614,18 @@ export default function ProfileScreen() {
               Consistency
             </Text>
 
-            <ScrollView
-              ref={consistencyScrollRef}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.gridWrap}
-              onLayout={(event) => {
-                consistencyViewportWidthRef.current = event.nativeEvent.layout.width;
-                scrollConsistencyToToday();
-              }}
-              onContentSizeChange={scrollConsistencyToToday}
-            >
+            <View style={s.gridWrap}>
               {consistencyColumns.map((col, wi) => (
                 <View
                   key={wi}
-                  style={[s.gridCol, wi > 0 && { marginLeft: CONSISTENCY_GAP }]}
+                  style={[s.gridCol, wi > 0 && s.gridColGap]}
                 >
                   {col.map((item, di) => (
                     <View
                       key={item.dateKey}
                       style={[
                         s.gridCell,
-                        di > 0 && { marginTop: CONSISTENCY_GAP },
+                        di > 0 && s.gridCellGap,
                         item.intensity === 0 && s.gridCellIdle,
                         item.intensity > 0 &&
                           item.intensity < 0.5 &&
@@ -680,7 +639,7 @@ export default function ProfileScreen() {
                   ))}
                 </View>
               ))}
-            </ScrollView>
+            </View>
           </View>
         </View>
 
@@ -1197,16 +1156,24 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     },
     gridWrap: {
       flexDirection: "row",
+      width: "100%",
     },
     gridCol: {
+      flex: 1,
       flexDirection: "column",
     },
+    gridColGap: {
+      marginLeft: CONSISTENCY_GAP,
+    },
     gridCell: {
-      width: CONSISTENCY_CELL,
-      height: CONSISTENCY_CELL,
+      width: "100%",
+      aspectRatio: 1,
       borderRadius: 2,
       borderWidth: 1,
       borderColor: C.heatIdleBorder,
+    },
+    gridCellGap: {
+      marginTop: CONSISTENCY_GAP,
     },
     gridCellIdle: { backgroundColor: C.heatIdle },
     gridCellLow: { backgroundColor: C.heatLow },
