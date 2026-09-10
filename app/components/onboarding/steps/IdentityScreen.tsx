@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Alert, Image, Keyboard, Pressable, Text, TextInput, View } from "react-native";
 
 import { palette } from "@/constants/theme";
-import { persistAvatarPhoto } from "@/lib/avatarPhoto";
+import { isAvatarPhotoUri, persistAvatarPhoto } from "@/lib/avatarPhoto";
 import { useTheme } from "@/hooks/useTheme";
 import { ScreenShell } from "./shared";
 import { ORANGE, makeStyles } from "./theme";
@@ -77,17 +77,17 @@ export function IdentityScreen({
           disabled={isPicking}
           style={s.avatarPickerFrame}
         >
-          {avatar ? (
+          {isAvatarPhotoUri(avatar) ? (
             <Image source={{ uri: avatar }} style={s.avatarPickerImage} />
           ) : (
             <Ionicons name="person-outline" size={36} color={palette.white35} />
           )}
           <View style={s.avatarPickerBadge}>
-            <Ionicons name="camera" size={14} color="#050505" />
+            <Ionicons name="camera" size={14} color="#FFFFFF" />
           </View>
         </Pressable>
         <Text style={s.avatarPickerLabel}>
-          {avatar ? "Tap to change photo" : "Add a photo (optional)"}
+          {isAvatarPhotoUri(avatar) ? "Tap to change photo" : "Add a photo (optional)"}
         </Text>
       </View>
 

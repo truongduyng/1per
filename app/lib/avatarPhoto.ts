@@ -47,7 +47,11 @@ export function deleteAvatarPhoto(uri?: string | null) {
   }
 }
 
-/** Whether a stored avatar value is a photo (as opposed to a legacy icon name). */
-export function isAvatarPhotoUri(value?: string | null): boolean {
-  return Boolean(value && value.includes(AVATAR_DIR_NAME));
+/**
+ * Whether a stored avatar value can be handed to React Native's Image loader.
+ * Older app versions stored icon identifiers such as `game:spark-mage` in this
+ * column; those are not image URLs and cause a native image-loader error.
+ */
+export function isAvatarPhotoUri(value?: string | null): value is string {
+  return Boolean(value && /^(?:file|content|https?|data):/i.test(value.trim()));
 }

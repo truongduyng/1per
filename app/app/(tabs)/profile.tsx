@@ -39,7 +39,11 @@ import { DAY_NAMES } from "@/lib/performance";
 import { getTodayInLocalTimezone } from "@/lib/timezone";
 import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
-import { deleteAvatarPhoto, persistAvatarPhoto } from "@/lib/avatarPhoto";
+import {
+  deleteAvatarPhoto,
+  isAvatarPhotoUri,
+  persistAvatarPhoto,
+} from "@/lib/avatarPhoto";
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 const CONSISTENCY_GAP = 3;
@@ -114,7 +118,10 @@ export default function ProfileScreen() {
 
   const profile = profileData?.[0];
   const displayName = profile?.name?.trim() || "User";
-  const avatarUri = profile?.avatar?.trim() || null;
+  // Legacy profiles may contain an icon id (for example `game:spark-mage`)
+  // instead of a photo URI. Never pass those values to <Image>.
+  const storedAvatar = profile?.avatar?.trim() ?? null;
+  const avatarUri = isAvatarPhotoUri(storedAvatar) ? storedAvatar : null;
 
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [draftName, setDraftName] = useState(displayName);
@@ -523,7 +530,7 @@ export default function ProfileScreen() {
                   />
                 )}
                 <View style={s.avatarEditBadge}>
-                  <Ionicons name="pencil" size={11} color="#050505" />
+                  <Ionicons name="pencil" size={11} color="#FFFFFF" />
                 </View>
               </View>
               <View style={s.identityMeta}>
@@ -898,7 +905,7 @@ export default function ProfileScreen() {
                 <Ionicons name="person-outline" size={34} color={palette.orange} />
               )}
               <View style={s.avatarEditBadge}>
-                <Ionicons name="camera" size={13} color="#050505" />
+                <Ionicons name="camera" size={13} color="#FFFFFF" />
               </View>
             </Pressable>
 
