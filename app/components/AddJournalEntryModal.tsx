@@ -1,6 +1,7 @@
 import { useTheme } from "@/hooks/useTheme";
 import { deleteJournalPhoto, persistJournalPhoto } from "@/lib/journalPhotos";
 import { getLocalDateString } from "@/lib/timezone";
+import { useVoiceTranscription } from "@/lib/voiceTranscription";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -32,6 +33,10 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   const [note, setNote] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const voice = useVoiceTranscription((text) =>
+    setNote(text.slice(0, NOTE_MAX_LENGTH)),
+  );
+  const isRecording = voice.status === "listening";
 
   const reset = () => {
     setNote("");
@@ -39,9 +44,27 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   };
 
   const handleClose = () => {
+    if (isRecording) voice.stop();
     if (photoUri) deleteJournalPhoto(photoUri);
     reset();
     onClose();
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      voice.stop();
+      return;
+    }
+    try {
+      await voice.start(note);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.warn("Failed to start speech recognition:", error);
+      Alert.alert(
+        "Microphone access needed",
+        "Enable microphone and speech recognition access in Settings to journal by talking.",
+      );
+    }
   };
 
   const pickPhoto = async (source: "camera" | "library") => {
@@ -92,6 +115,7 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
 
   const handleSave = async () => {
     if (!canSave || saving) return;
+    if (isRecording) voice.stop();
     setSaving(true);
     try {
       await onSave({ note: note.trim(), photoUri });
@@ -149,16 +173,37 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={s.section}>
-            <Text style={s.label}>NOTE</Text>
+            <View style={s.labelRow}>
+              <Text style={s.label}>NOTE</Text>
+              <Pressable
+                style={[s.micBtn, isRecording && s.micBtnActive]}
+                onPress={toggleRecording}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isRecording ? "Stop journaling by talking" : "Journal by talking"
+                }
+              >
+                <Ionicons
+                  name={isRecording ? "stop" : "mic-outline"}
+                  size={14}
+                  color={isRecording ? C.background : C.accentText}
+                />
+                <Text style={[s.micBtnText, isRecording && s.micBtnTextActive]}>
+                  {isRecording ? "Listening…" : "Talk"}
+                </Text>
+              </Pressable>
+            </View>
             <TextInput
               style={s.noteInput}
-              placeholder="What's on your mind today?"
+              placeholder="What's on your mind today? Type, or tap Talk to speak it."
               placeholderTextColor={C.textQuaternary}
               value={note}
               onChangeText={setNote}
               multiline
               maxLength={NOTE_MAX_LENGTH}
               autoFocus
+              editable={!isRecording}
             />
             <Text style={s.counter}>
               {note.length}/{NOTE_MAX_LENGTH}
@@ -249,7 +294,35 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       fontWeight: "700",
       letterSpacing: 1.5,
       color: C.textTertiary,
+    },
+    labelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       marginBottom: 10,
+    },
+    micBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: C.accentBg,
+      borderWidth: 1,
+      borderColor: C.accentBorder,
+    },
+    micBtnActive: {
+      backgroundColor: C.accentText,
+      borderColor: C.accentText,
+    },
+    micBtnText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: C.accentText,
+    },
+    micBtnTextActive: {
+      color: C.background,
     },
     noteInput: {
       minHeight: 140,
