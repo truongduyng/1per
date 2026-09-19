@@ -205,18 +205,21 @@ export default function EveningResetScreen() {
           skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
         />
       </View>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTransparent: true,
-          title: "Evening Reset",
-          headerTintColor: C.textPrimary,
-          headerTitleStyle: { color: C.textPrimary },
-          headerShadowVisible: false,
-          headerBackButtonDisplayMode: "minimal",
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={s.safeArea}>
+        <View style={s.header}>
+          <Pressable
+            style={s.headerBack}
+            onPress={() => router.back()}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="Go back"
+          >
+            <Ionicons name="chevron-back" size={24} color={C.iconSecondary} />
+          </Pressable>
+          <Text style={s.headerTitle}>Evening Reset</Text>
+          <View style={s.headerBack} />
+        </View>
         <KeyboardAwareScrollView
           bottomOffset={32}
           contentContainerStyle={s.scrollContent}
@@ -369,10 +372,22 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.68 },
     auroraLight: { opacity: 0.5 },
     safeArea: { flex: 1, paddingHorizontal: 24 },
+    header: {
+      height: HEADER_HEIGHT,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    headerBack: { width: 32, alignItems: "flex-start" },
+    headerTitle: {
+      color: C.textPrimary,
+      fontSize: 17,
+      fontWeight: "600",
+    },
     scrollContent: { paddingBottom: 28 },
     timerContent: {
       alignItems: "center",
-      paddingTop: HEADER_HEIGHT + 20,
+      paddingTop: 20,
       paddingBottom: 12,
     },
     ringWrap: {
