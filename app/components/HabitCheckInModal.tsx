@@ -54,6 +54,8 @@ export function HabitCheckInModal({
   const [photoUri, setPhotoUri] = useState<string | null>(
     initialPhotoUri ?? null,
   );
+  // Placeholder ratio until the photo reports its real dimensions.
+  const [photoAspectRatio, setPhotoAspectRatio] = useState(4 / 3);
   const [note, setNote] = useState(initialNote ?? "");
   const [saving, setSaving] = useState(false);
 
@@ -81,7 +83,7 @@ export function HabitCheckInModal({
 
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ["images"],
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.7,
       };
       const result =
@@ -93,6 +95,8 @@ export function HabitCheckInModal({
 
       const stored = persistHabitPhoto(result.assets[0].uri, habitId, dateKey);
       if (photoUri && photoUri !== originalPhotoUri) deleteHabitPhoto(photoUri);
+      const { width, height } = result.assets[0];
+      if (width && height) setPhotoAspectRatio(width / height);
       setPhotoUri(stored);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
@@ -104,6 +108,7 @@ export function HabitCheckInModal({
   const removePhoto = () => {
     if (photoUri && photoUri !== originalPhotoUri) deleteHabitPhoto(photoUri);
     setPhotoUri(null);
+    setPhotoAspectRatio(4 / 3);
   };
 
   const handleSave = async () => {
@@ -197,8 +202,14 @@ export function HabitCheckInModal({
                   <View style={s.photoWrap}>
                     <Image
                       source={{ uri: photoUri }}
-                      style={s.photo}
-                      resizeMode="cover"
+                      style={[s.photo, { aspectRatio: photoAspectRatio }]}
+                      resizeMode="contain"
+                      onLoad={(event) => {
+                        const { width, height } = event.nativeEvent.source;
+                        if (width > 0 && height > 0) {
+                          setPhotoAspectRatio(width / height);
+                        }
+                      }}
                     />
                     <Pressable
                       style={s.photoRemoveBtn}
@@ -352,7 +363,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       borderColor: C.cardBorder,
       backgroundColor: C.cardBg,
     },
-    photo: { width: "100%", height: 240 },
+    photo: { width: "100%" },
     photoRemoveBtn: {
       position: "absolute",
       top: 10,
