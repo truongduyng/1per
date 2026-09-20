@@ -1,6 +1,7 @@
 import { useTheme } from "@/hooks/useTheme";
 import { deleteJournalPhoto, persistJournalPhoto } from "@/lib/journalPhotos";
 import { getLocalDateString } from "@/lib/timezone";
+import { useVoiceTranscription } from "@/lib/voiceTranscription";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
@@ -31,17 +32,42 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   const insets = useSafeAreaInsets();
   const [note, setNote] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  // Placeholder ratio until the picked photo reports its real dimensions.
+  const [photoAspectRatio, setPhotoAspectRatio] = useState(4 / 3);
   const [saving, setSaving] = useState(false);
+  const voice = useVoiceTranscription((text) =>
+    setNote(text.slice(0, NOTE_MAX_LENGTH)),
+  );
+  const isRecording = voice.status === "listening";
 
   const reset = () => {
     setNote("");
     setPhotoUri(null);
+    setPhotoAspectRatio(4 / 3);
   };
 
   const handleClose = () => {
+    if (isRecording) voice.stop();
     if (photoUri) deleteJournalPhoto(photoUri);
     reset();
     onClose();
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      voice.stop();
+      return;
+    }
+    try {
+      await voice.start(note);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (error) {
+      console.warn("Failed to start speech recognition:", error);
+      Alert.alert(
+        "Microphone access needed",
+        "Enable microphone and speech recognition access in Settings to journal by talking.",
+      );
+    }
   };
 
   const pickPhoto = async (source: "camera" | "library") => {
@@ -60,7 +86,7 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
 
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ["images"],
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.7,
       };
       const result =
@@ -75,6 +101,8 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
         getLocalDateString(new Date()),
       );
       if (photoUri) deleteJournalPhoto(photoUri);
+      const { width, height } = result.assets[0];
+      if (width && height) setPhotoAspectRatio(width / height);
       setPhotoUri(stored);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
@@ -86,12 +114,14 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   const removePhoto = () => {
     if (photoUri) deleteJournalPhoto(photoUri);
     setPhotoUri(null);
+    setPhotoAspectRatio(4 / 3);
   };
 
   const canSave = note.trim().length > 0 || !!photoUri;
 
   const handleSave = async () => {
     if (!canSave || saving) return;
+    if (isRecording) voice.stop();
     setSaving(true);
     try {
       await onSave({ note: note.trim(), photoUri });
@@ -149,16 +179,37 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
           keyboardShouldPersistTaps="handled"
         >
           <View style={s.section}>
-            <Text style={s.label}>NOTE</Text>
+            <View style={s.labelRow}>
+              <Text style={s.label}>NOTE</Text>
+              <Pressable
+                style={[s.micBtn, isRecording && s.micBtnActive]}
+                onPress={toggleRecording}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  isRecording ? "Stop journaling by talking" : "Journal by talking"
+                }
+              >
+                <Ionicons
+                  name={isRecording ? "stop" : "mic-outline"}
+                  size={14}
+                  color={isRecording ? C.background : C.accentText}
+                />
+                <Text style={[s.micBtnText, isRecording && s.micBtnTextActive]}>
+                  {isRecording ? "Listening…" : "Talk"}
+                </Text>
+              </Pressable>
+            </View>
             <TextInput
               style={s.noteInput}
-              placeholder="What's on your mind today?"
+              placeholder="What's on your mind today? Type, or tap Talk to speak it."
               placeholderTextColor={C.textQuaternary}
               value={note}
               onChangeText={setNote}
               multiline
               maxLength={NOTE_MAX_LENGTH}
               autoFocus
+              editable={!isRecording}
             />
             <Text style={s.counter}>
               {note.length}/{NOTE_MAX_LENGTH}
@@ -171,8 +222,14 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
               <View style={s.photoWrap}>
                 <Image
                   source={{ uri: photoUri }}
-                  style={s.photo}
-                  resizeMode="cover"
+                  style={[s.photo, { aspectRatio: photoAspectRatio }]}
+                  resizeMode="contain"
+                  onLoad={(event) => {
+                    const { width, height } = event.nativeEvent.source;
+                    if (width > 0 && height > 0) {
+                      setPhotoAspectRatio(width / height);
+                    }
+                  }}
                 />
                 <Pressable
                   style={s.photoRemoveBtn}
@@ -249,7 +306,35 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       fontWeight: "700",
       letterSpacing: 1.5,
       color: C.textTertiary,
+    },
+    labelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
       marginBottom: 10,
+    },
+    micBtn: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      paddingHorizontal: 10,
+      height: 26,
+      borderRadius: 13,
+      backgroundColor: C.accentBg,
+      borderWidth: 1,
+      borderColor: C.accentBorder,
+    },
+    micBtnActive: {
+      backgroundColor: C.accentText,
+      borderColor: C.accentText,
+    },
+    micBtnText: {
+      fontSize: 11,
+      fontWeight: "700",
+      color: C.accentText,
+    },
+    micBtnTextActive: {
+      color: C.background,
     },
     noteInput: {
       minHeight: 140,
@@ -292,7 +377,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       borderColor: C.cardBorder,
       backgroundColor: C.cardBg,
     },
-    photo: { width: "100%", height: 240 },
+    photo: { width: "100%" },
     photoRemoveBtn: {
       position: "absolute",
       top: 10,

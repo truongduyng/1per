@@ -8,7 +8,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { desc, isNotNull, or } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
 import React, { useMemo, useState } from "react";
-import { Alert, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Image,
+  ImageStyle,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleProp,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { VideoView, useVideoPlayer } from "expo-video";
 
@@ -16,6 +27,32 @@ type TimelineItem =
   | { kind: "habit"; id: string; createdAt: number; entry: typeof habitCompletions.$inferSelect }
   | { kind: "focus"; id: string; createdAt: number; entry: typeof dailyFocus.$inferSelect }
   | { kind: "journal"; id: string; createdAt: number; entry: typeof journalEntries.$inferSelect };
+
+function EntryPhoto({
+  uri,
+  style,
+}: {
+  uri: string;
+  style: StyleProp<ImageStyle>;
+}) {
+  // Keep the photo's own aspect ratio so nothing gets cropped; 4:3 is only a
+  // placeholder until the real dimensions arrive.
+  const [aspectRatio, setAspectRatio] = useState(4 / 3);
+
+  return (
+    <Image
+      source={{ uri }}
+      style={[style, { aspectRatio }]}
+      resizeMode="contain"
+      onLoad={(event) => {
+        const { width, height } = event.nativeEvent.source;
+        if (width > 0 && height > 0) {
+          setAspectRatio(width / height);
+        }
+      }}
+    />
+  );
+}
 
 function FocusVideoPlayerModal({
   uri,
@@ -288,11 +325,7 @@ export default function JournalScreen() {
                               </Text>
                             </View>
                             {entry.photoUri ? (
-                              <Image
-                                source={{ uri: entry.photoUri }}
-                                style={s.entryPhoto}
-                                resizeMode="cover"
-                              />
+                              <EntryPhoto uri={entry.photoUri} style={s.entryPhoto} />
                             ) : null}
                             {entry.note ? (
                               <Text style={s.entryNote}>{entry.note}</Text>
@@ -326,11 +359,7 @@ export default function JournalScreen() {
                             </Text>
                           </View>
                           {entry.photoUri ? (
-                            <Image
-                              source={{ uri: entry.photoUri }}
-                              style={s.entryPhoto}
-                              resizeMode="cover"
-                            />
+                            <EntryPhoto uri={entry.photoUri} style={s.entryPhoto} />
                           ) : null}
                           {entry.note ? (
                             <Text style={s.entryNote}>{entry.note}</Text>
@@ -447,7 +476,6 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     },
     entryPhoto: {
       width: "100%",
-      height: 220,
       borderRadius: 12,
     },
     entryNote: {

@@ -6,10 +6,8 @@ import { useTheme } from "@/hooks/useTheme";
 import { resolveIoniconName } from "@/lib/iconNames";
 import * as Haptics from "expo-haptics";
 import Ionicons from "@expo/vector-icons/Ionicons";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-
-const DOUBLE_TAP_MS = 300;
 
 type HabitRow = typeof habits.$inferSelect;
 type CompletionRow = typeof habitCompletions.$inferSelect;
@@ -31,13 +29,6 @@ export function HomeHabitsSection({
 }: Props) {
   const C = useTheme();
   const [checkInHabitId, setCheckInHabitId] = useState<number | null>(null);
-  const pendingTapRef = useRef<{ habitId: number; timer: ReturnType<typeof setTimeout> } | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (pendingTapRef.current) clearTimeout(pendingTapRef.current.timer);
-    };
-  }, []);
 
   const todayCheckIns = useMemo(() => {
     const map: Record<number, { photoUri: string | null; note: string | null }> = {};
@@ -78,32 +69,14 @@ export function HomeHabitsSection({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
-  const runSingleTap = (habitId: number, isDone: boolean) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  // The checkbox completes the habit straight away; the reflection modal is
+  // opened separately from the button on the right of the row.
+  const toggleDone = (habitId: number, isDone: boolean) => {
     if (isDone) {
       void undoCheckIn(habitId);
       return;
     }
-    setCheckInHabitId(habitId);
-  };
-
-  const handleHabitPress = (habitId: number, isDone: boolean) => {
-    const pending = pendingTapRef.current;
-
-    if (pending?.habitId === habitId) {
-      clearTimeout(pending.timer);
-      pendingTapRef.current = null;
-      if (!isDone) void submitCheckIn(habitId, { photoUri: null, note: "" });
-      return;
-    }
-
-    if (pending) clearTimeout(pending.timer);
-
-    const timer = setTimeout(() => {
-      pendingTapRef.current = null;
-      runSingleTap(habitId, isDone);
-    }, DOUBLE_TAP_MS);
-    pendingTapRef.current = { habitId, timer };
+    void submitCheckIn(habitId, { photoUri: null, note: "" });
   };
 
   const s = makeStyles(C);
@@ -120,19 +93,27 @@ export function HomeHabitsSection({
           ) : (
             todayHabits.map((habit, index) => {
               const done = doneIds.has(habit.id);
+              const checkIn = todayCheckIns[habit.id];
+              const hasReflection = !!(checkIn?.photoUri || checkIn?.note);
               return (
                 <View key={habit.id}>
                   {index > 0 && <View style={s.divider} />}
-                  <Pressable
-                    style={s.row}
-                    onPress={() => handleHabitPress(habit.id, done)}
-                    accessibilityRole="button"
-                    accessibilityLabel={
-                      done
-                        ? `${habit.title}, done today. Undo check-in`
-                        : `Check in ${habit.title}`
-                    }
-                  >
+                  <View style={s.row}>
+                    <Pressable
+                      onPress={() => toggleDone(habit.id, done)}
+                      hitSlop={10}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: done }}
+                      accessibilityLabel={
+                        done
+                          ? `${habit.title}, done today. Undo check-in`
+                          : `Mark ${habit.title} as done`
+                      }
+                    >
+                      <View style={[s.checkbox, done && s.checkboxDone]}>
+                        {done && <Ionicons name="checkmark" size={13} color={C.textInverse} />}
+                      </View>
+                    </Pressable>
                     <Ionicons
                       name={resolveIoniconName(habit.icon, "star-outline")}
                       size={22}
@@ -147,10 +128,24 @@ export function HomeHabitsSection({
                         <Text style={s.rowSubtitle}>{habit.subtitle}</Text>
                       ) : null}
                     </View>
-                    <View style={[s.checkbox, done && s.checkboxDone]}>
-                      {done && <Ionicons name="checkmark" size={13} color={C.textInverse} />}
-                    </View>
-                  </Pressable>
+                    <Pressable
+                      style={[s.reflectBtn, hasReflection && s.reflectBtnFilled]}
+                      onPress={() => setCheckInHabitId(habit.id)}
+                      hitSlop={10}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        hasReflection
+                          ? `Edit reflection for ${habit.title}`
+                          : `Add a reflection for ${habit.title}`
+                      }
+                    >
+                      <Ionicons
+                        name={hasReflection ? "camera" : "camera-outline"}
+                        size={16}
+                        color={hasReflection ? C.accentText : C.iconTertiary}
+                      />
+                    </Pressable>
+                  </View>
                 </View>
               );
             })
@@ -207,6 +202,16 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       gap: 12,
     },
     habitIcon: { width: 28, textAlign: "center" },
+    reflectBtn: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
+      borderColor: C.cardBorder,
+    },
+    reflectBtnFilled: { borderColor: C.accent },
     rowInfo: { flex: 1 },
     rowTitle: { fontSize: 15, fontWeight: "600", color: C.textPrimary },
     rowTitleDone: { color: C.textTertiary, textDecorationLine: "line-through" },
