@@ -135,12 +135,12 @@ export function HomeHabitsSection({
                       accessibilityRole="button"
                       accessibilityLabel={
                         hasReflection
-                          ? `Edit photo and note for ${habit.title}`
-                          : `Add photo or note for ${habit.title}`
+                          ? `Edit reflection for ${habit.title}`
+                          : `Add a reflection for ${habit.title}`
                       }
                     >
                       <Ionicons
-                        name={hasReflection ? "create" : "create-outline"}
+                        name={hasReflection ? "journal" : "journal-outline"}
                         size={16}
                         color={hasReflection ? C.accentText : C.iconTertiary}
                       />
