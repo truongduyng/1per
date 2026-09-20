@@ -32,6 +32,8 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   const insets = useSafeAreaInsets();
   const [note, setNote] = useState("");
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  // Placeholder ratio until the picked photo reports its real dimensions.
+  const [photoAspectRatio, setPhotoAspectRatio] = useState(4 / 3);
   const [saving, setSaving] = useState(false);
   const voice = useVoiceTranscription((text) =>
     setNote(text.slice(0, NOTE_MAX_LENGTH)),
@@ -41,6 +43,7 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   const reset = () => {
     setNote("");
     setPhotoUri(null);
+    setPhotoAspectRatio(4 / 3);
   };
 
   const handleClose = () => {
@@ -83,7 +86,7 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
 
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ["images"],
-        allowsEditing: true,
+        allowsEditing: false,
         quality: 0.7,
       };
       const result =
@@ -98,6 +101,8 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
         getLocalDateString(new Date()),
       );
       if (photoUri) deleteJournalPhoto(photoUri);
+      const { width, height } = result.assets[0];
+      if (width && height) setPhotoAspectRatio(width / height);
       setPhotoUri(stored);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
@@ -109,6 +114,7 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   const removePhoto = () => {
     if (photoUri) deleteJournalPhoto(photoUri);
     setPhotoUri(null);
+    setPhotoAspectRatio(4 / 3);
   };
 
   const canSave = note.trim().length > 0 || !!photoUri;
@@ -216,8 +222,14 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
               <View style={s.photoWrap}>
                 <Image
                   source={{ uri: photoUri }}
-                  style={s.photo}
-                  resizeMode="cover"
+                  style={[s.photo, { aspectRatio: photoAspectRatio }]}
+                  resizeMode="contain"
+                  onLoad={(event) => {
+                    const { width, height } = event.nativeEvent.source;
+                    if (width > 0 && height > 0) {
+                      setPhotoAspectRatio(width / height);
+                    }
+                  }}
                 />
                 <Pressable
                   style={s.photoRemoveBtn}
@@ -365,7 +377,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       borderColor: C.cardBorder,
       backgroundColor: C.cardBg,
     },
-    photo: { width: "100%", height: 240 },
+    photo: { width: "100%" },
     photoRemoveBtn: {
       position: "absolute",
       top: 10,
