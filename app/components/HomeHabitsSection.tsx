@@ -140,7 +140,7 @@ export function HomeHabitsSection({
                       }
                     >
                       <Ionicons
-                        name={hasReflection ? "journal" : "journal-outline"}
+                        name={hasReflection ? "camera" : "camera-outline"}
                         size={16}
                         color={hasReflection ? C.accentText : C.iconTertiary}
                       />
