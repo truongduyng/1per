@@ -48,6 +48,14 @@ export function HomeHabitsSection({
     [todayHabits, checkInHabitId],
   );
 
+  // Keep the last non-null habit around while the sheet animates closed so
+  // its props don't go stale mid-dismiss (the sheet itself stays mounted;
+  // only `visible` toggles, letting the native BottomSheet animate out).
+  const [displayedHabit, setDisplayedHabit] = useState<HabitRow | null>(null);
+  if (checkInHabit && checkInHabit !== displayedHabit) {
+    setDisplayedHabit(checkInHabit);
+  }
+
   const submitCheckIn = async (habitId: number, draft: HabitCheckInDraft) => {
     const wasDone = doneIds.has(habitId);
     await completionOps.markDone(habitId, today, {
@@ -153,19 +161,19 @@ export function HomeHabitsSection({
         </View>
       </View>
 
-      {checkInHabit ? (
+      {displayedHabit ? (
         <HabitCheckInModal
-          key={`check-in-${checkInHabit.id}-${todayKey}`}
+          key={`check-in-${displayedHabit.id}-${todayKey}`}
           visible={checkInHabitId != null}
-          habitId={checkInHabit.id}
-          habitTitle={checkInHabit.title}
+          habitId={displayedHabit.id}
+          habitTitle={displayedHabit.title}
           dateKey={todayKey}
-          isDone={doneIds.has(checkInHabit.id)}
-          initialPhotoUri={todayCheckIns[checkInHabit.id]?.photoUri ?? null}
-          initialNote={todayCheckIns[checkInHabit.id]?.note ?? null}
+          isDone={doneIds.has(displayedHabit.id)}
+          initialPhotoUri={todayCheckIns[displayedHabit.id]?.photoUri ?? null}
+          initialNote={todayCheckIns[displayedHabit.id]?.note ?? null}
           onClose={() => setCheckInHabitId(null)}
-          onSubmit={(draft) => submitCheckIn(checkInHabit.id, draft)}
-          onUndo={() => undoCheckIn(checkInHabit.id)}
+          onSubmit={(draft) => submitCheckIn(displayedHabit.id, draft)}
+          onUndo={() => undoCheckIn(displayedHabit.id)}
         />
       ) : null}
     </>
