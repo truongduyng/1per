@@ -1,10 +1,52 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
 private let appGroup = "group.app.kadoze.yikudo"
 private let storageKey = "goalHabitsSnapshot"
 private let affirmationStorageKey = "dailyAffirmation"
+private let pendingTogglesKey = "pendingHabitToggles"
 private let maxHabitsShown = 3
+
+// Tapping a habit row can't write to the app's SQLite database from the
+// widget extension process, so it just flips the habit's id in this
+// App-Group-backed pending list for optimistic display, and reloads the
+// widget's timeline. The app reconciles the list into the database (via
+// completionOps) and clears it next time it comes to the foreground.
+struct ToggleHabitDoneIntent: AppIntent {
+  static var title: LocalizedStringResource = "Toggle habit done"
+  static var isDiscoverable: Bool = false
+
+  @Parameter(title: "Habit ID")
+  var habitId: Int
+
+  init() {}
+
+  init(habitId: Int) {
+    self.habitId = habitId
+  }
+
+  func perform() async throws -> some IntentResult {
+    let defaults = UserDefaults(suiteName: appGroup)
+    var pending = Set(readPendingToggles(from: defaults))
+    if !pending.insert(habitId).inserted {
+      pending.remove(habitId)
+    }
+    if let data = try? JSONSerialization.data(withJSONObject: Array(pending)) {
+      defaults?.set(data, forKey: pendingTogglesKey)
+    }
+
+    WidgetCenter.shared.reloadTimelines(ofKind: "GoalHabitsWidget")
+    WidgetCenter.shared.reloadTimelines(ofKind: "OverviewWidget")
+    return .result()
+  }
+}
+
+private func readPendingToggles(from defaults: UserDefaults?) -> [Int] {
+  guard let data = defaults?.data(forKey: pendingTogglesKey) else { return [] }
+  guard let raw = try? JSONSerialization.jsonObject(with: data) as? [Int] else { return [] }
+  return raw
+}
 
 struct GoalHabitsWidgetHabit: Identifiable {
   let id: Int
@@ -73,11 +115,16 @@ private func decodeGoalHabits(from defaults: UserDefaults?) -> (goalText: String
   let goalDone = (payload?["goalDone"] as? Bool) ?? false
   let habitsRaw = (payload?["habits"] as? [[String: Any]]) ?? []
 
+  let pending = Set(readPendingToggles(from: defaults))
+
   let habits: [GoalHabitsWidgetHabit] = habitsRaw.compactMap { item in
     guard let id = item["id"] as? Int, let title = item["title"] as? String else {
       return nil
     }
-    let done = (item["done"] as? Bool) ?? false
+    var done = (item["done"] as? Bool) ?? false
+    if pending.contains(id) {
+      done.toggle()
+    }
     return GoalHabitsWidgetHabit(id: id, title: title, done: done)
   }
 
@@ -193,17 +240,23 @@ private func goalRow(goalText: String, goalDone: Bool, titleSize: CGFloat, iconS
 
 @ViewBuilder
 private func habitRow(_ habit: GoalHabitsWidgetHabit) -> some View {
-  HStack(spacing: 8) {
-    Image(systemName: habit.done ? "checkmark.circle.fill" : "circle")
-      .font(.system(size: 15))
-      .foregroundStyle(habit.done ? Color("goalHabitsAccent") : Color("goalHabitsMuted"))
+  Button(intent: ToggleHabitDoneIntent(habitId: habit.id)) {
+    HStack(spacing: 8) {
+      Image(systemName: habit.done ? "checkmark.circle.fill" : "circle")
+        .font(.system(size: 15))
+        .foregroundStyle(habit.done ? Color("goalHabitsAccent") : Color("goalHabitsMuted"))
 
-    Text(habit.title)
-      .font(.system(size: 14, weight: .medium, design: .rounded))
-      .foregroundStyle(Color("goalHabitsInk"))
-      .strikethrough(habit.done, color: Color("goalHabitsMuted"))
-      .lineLimit(1)
+      Text(habit.title)
+        .font(.system(size: 14, weight: .medium, design: .rounded))
+        .foregroundStyle(Color("goalHabitsInk"))
+        .strikethrough(habit.done, color: Color("goalHabitsMuted"))
+        .lineLimit(1)
+
+      Spacer(minLength: 0)
+    }
+    .contentShape(Rectangle())
   }
+  .buttonStyle(.plain)
 }
 
 struct OverviewWidgetView: View {

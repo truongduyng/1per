@@ -6,13 +6,18 @@ import {
   habitCompletions,
   dailyFocus,
   dailyFocusOps,
+  completionOps,
 } from "@/lib/db";
 import {
   type DailyAffirmation,
   getDailyAffirmation,
   syncDailyAffirmationWidget,
 } from "@/lib/dailyAffirmation";
-import { syncGoalHabitsWidget } from "@/lib/goalHabitsWidget";
+import {
+  syncGoalHabitsWidget,
+  readPendingHabitToggles,
+  clearPendingHabitToggles,
+} from "@/lib/goalHabitsWidget";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
@@ -115,6 +120,10 @@ export default function HomeScreen() {
     }
     return set;
   }, [allCompletions, todayKey]);
+  const doneIdsRef = useRef(doneIds);
+  useEffect(() => {
+    doneIdsRef.current = doneIds;
+  }, [doneIds]);
 
   const isEveningResetUnlocked = useMemo(
     () => __DEV__ || new Date().getHours() >= 21,
@@ -149,7 +158,31 @@ export default function HomeScreen() {
       }
     };
 
+    // Applies habit taps made on the widget (which can't reach SQLite
+    // directly) into the database, then clears the pending list. The
+    // syncGoalHabitsWidget effect below picks up the resulting doneIds
+    // change and re-syncs the widget with the canonical state.
+    const reconcilePendingHabitToggles = async () => {
+      try {
+        const pending = readPendingHabitToggles();
+        if (pending.length === 0) return;
+
+        const now = getTodayInLocalTimezone();
+        for (const habitId of pending) {
+          if (doneIdsRef.current.has(habitId)) {
+            await completionOps.markUndone(habitId, now);
+          } else {
+            await completionOps.markDone(habitId, now);
+          }
+        }
+        clearPendingHabitToggles();
+      } catch (error) {
+        console.warn("Failed to reconcile widget habit toggles:", error);
+      }
+    };
+
     loadAffirmation();
+    reconcilePendingHabitToggles();
 
     // Re-sync on foreground so the widget picks up a new day's affirmation
     // even if the app was left running/backgrounded across midnight, and so
@@ -157,6 +190,7 @@ export default function HomeScreen() {
     const subscription = AppState.addEventListener("change", (nextState) => {
       if (nextState === "active") {
         loadAffirmation();
+        reconcilePendingHabitToggles();
         setLockCondition(appBlocker.getLockCondition());
       }
     });
