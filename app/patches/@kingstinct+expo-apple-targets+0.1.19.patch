@@ -11,3 +11,56 @@ index 95989d5..c4fa5d9 100644
      if (targetToUpdate) {
          console.log(`Target "${targetToUpdate.props.productName}" already exists, updating instead of creating a new one`);
      }
+diff --git a/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.d.ts b/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.d.ts
+--- a/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.d.ts
++++ b/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.d.ts
+@@ -3,4 +3,5 @@
+     static reloadWidget(name?: string): void;
+     constructor(appGroup: string);
+     set(key: string, value?: string | number | Record<string, string | number> | Array<Record<string, string | number>>): void;
++    get(key: string): string | number | Record<string, unknown> | Array<unknown> | undefined;
+ }
+diff --git a/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.js b/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.js
+--- a/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.js
++++ b/node_modules/@kingstinct/expo-apple-targets/build/ExtensionStorage.js
+@@ -11,6 +11,7 @@
+     setObject() { },
+     remove() { },
+     setArray() { },
++    get() { return undefined; },
+ };
+ const originalSetObject = nativeModule.setObject;
+ // Sweet API doesn't support doing this natively.
+@@ -44,5 +45,8 @@
+             nativeModule.setObject(key, value, this.appGroup);
+         }
+     }
++    get(key) {
++        return nativeModule.get(key, this.appGroup);
++    }
+ }
+ exports.ExtensionStorage = ExtensionStorage;
+diff --git a/node_modules/@kingstinct/expo-apple-targets/ios/ExtensionStorageModule.swift b/node_modules/@kingstinct/expo-apple-targets/ios/ExtensionStorageModule.swift
+--- a/node_modules/@kingstinct/expo-apple-targets/ios/ExtensionStorageModule.swift
++++ b/node_modules/@kingstinct/expo-apple-targets/ios/ExtensionStorageModule.swift
+@@ -8,7 +8,19 @@
+         Function("remove") { (forKey: String, suiteName: String?) in
+             UserDefaults(suiteName: suiteName)?.removeObject(forKey: forKey)
+         }
+-        
++
++        // Reads a value written by `set()` (JSON-decoded back into an
++        // array/object/etc) or, for a plain value written directly by
++        // native code sharing this App Group (e.g. a widget's AppIntent),
++        // falls back to a plain UserDefaults lookup.
++        Function("get") { (forKey: String, suiteName: String?) -> Any? in
++            let defaults = UserDefaults(suiteName: suiteName)
++            guard let data = defaults?.data(forKey: forKey) else {
++                return defaults?.object(forKey: forKey)
++            }
++            return try? JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
++        }
++
+         Function("reloadWidget") { (timeline: String?) in
+             if let timeline = timeline {
+                 WidgetCenter.shared.reloadTimelines(ofKind: timeline)
