@@ -870,77 +870,6 @@ export default function RoutinesScreen() {
 
         <View style={s.section}>
           <View style={s.sectionLabelRow}>
-            <Text style={s.sectionLabel}>CHALLENGES</Text>
-            <Pressable
-              style={s.addHabitInlineBtn}
-              onPress={() => router.push("/challenges")}
-            >
-              <Ionicons name="add" size={14} color={C.accentText} />
-              <Text style={s.addHabitInlineBtnText}>Start</Text>
-            </Pressable>
-          </View>
-          {(activeChallenges ?? []).length > 0 ? (
-            <View style={s.habitList}>
-              {(activeChallenges ?? []).map((challenge) => {
-                const startDateObj = parseDateKey(challenge.startDate);
-                const daysElapsed = Math.round(
-                  (today.getTime() - startDateObj.getTime()) / 86400000,
-                );
-                const dayNumber = Math.min(daysElapsed + 1, challenge.durationDays);
-                const isComplete = daysElapsed >= challenge.durationDays;
-                const progress = Math.max(0, Math.min(dayNumber / challenge.durationDays, 1));
-                return (
-                  <View key={challenge.id} style={s.habitCard}>
-                    <Pressable
-                      style={s.habitCardRow}
-                      onPress={() => setDetailChallengeId(challenge.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${challenge.title} details`}
-                    >
-                      <View style={s.habitIconWrap}>
-                        <Ionicons
-                          name={resolveIoniconName(challenge.icon, "flame-outline")}
-                          size={22}
-                          color={C.accentText}
-                        />
-                      </View>
-                      <View style={s.habitInfo}>
-                        <Text style={s.habitTitle} numberOfLines={1}>
-                          {challenge.title}
-                        </Text>
-                        <Text style={s.habitDuration}>
-                          {isComplete
-                            ? "Complete"
-                            : `Day ${dayNumber} of ${challenge.durationDays}`}
-                        </Text>
-                      </View>
-                      <Pressable
-                        onPress={() => endChallenge(challenge.id, challenge.title)}
-                        hitSlop={12}
-                        accessibilityRole="button"
-                        accessibilityLabel="Quit challenge"
-                      >
-                        <Ionicons name="close-circle-outline" size={20} color={C.textQuaternary} />
-                      </Pressable>
-                    </Pressable>
-                    <View style={s.challengeProgressTrack}>
-                      <View style={[s.challengeProgressFill, { width: `${progress * 100}%` }]} />
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          ) : (
-            <Pressable style={s.emptyChallengeCard} onPress={() => router.push("/challenges")}>
-              <Ionicons name="flag-outline" size={18} color={C.iconSecondary} />
-              <Text style={s.emptyChallengeText}>Try a preset challenge like 69 Hard</Text>
-              <Ionicons name="chevron-forward" size={16} color={C.textQuaternary} />
-            </Pressable>
-          )}
-        </View>
-
-        <View style={s.section}>
-          <View style={s.sectionLabelRow}>
             <Text style={s.sectionLabel}>ACTIVE HABITS</Text>
             <Pressable style={s.addHabitInlineBtn} onPress={() => setAddModalVisible(true)}>
               <Ionicons name="add" size={14} color={C.accentText} />
@@ -1042,6 +971,77 @@ export default function RoutinesScreen() {
                 );
               })}
             </View>
+          )}
+        </View>
+
+        <View style={s.section}>
+          <View style={s.sectionLabelRow}>
+            <Text style={s.sectionLabel}>CHALLENGES</Text>
+            <Pressable
+              style={s.addHabitInlineBtn}
+              onPress={() => router.push("/challenges")}
+            >
+              <Ionicons name="add" size={14} color={C.accentText} />
+              <Text style={s.addHabitInlineBtnText}>Start</Text>
+            </Pressable>
+          </View>
+          {(activeChallenges ?? []).length > 0 ? (
+            <View style={s.habitList}>
+              {(activeChallenges ?? []).map((challenge) => {
+                const startDateObj = parseDateKey(challenge.startDate);
+                const daysElapsed = Math.round(
+                  (today.getTime() - startDateObj.getTime()) / 86400000,
+                );
+                const dayNumber = Math.min(daysElapsed + 1, challenge.durationDays);
+                const isComplete = daysElapsed >= challenge.durationDays;
+                const progress = Math.max(0, Math.min(dayNumber / challenge.durationDays, 1));
+                return (
+                  <View key={challenge.id} style={s.habitCard}>
+                    <Pressable
+                      style={s.habitCardRow}
+                      onPress={() => setDetailChallengeId(challenge.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${challenge.title} details`}
+                    >
+                      <View style={s.habitIconWrap}>
+                        <Ionicons
+                          name={resolveIoniconName(challenge.icon, "flame-outline")}
+                          size={22}
+                          color={C.accentText}
+                        />
+                      </View>
+                      <View style={s.habitInfo}>
+                        <Text style={s.habitTitle} numberOfLines={1}>
+                          {challenge.title}
+                        </Text>
+                        <Text style={s.habitDuration}>
+                          {isComplete
+                            ? "Complete"
+                            : `Day ${dayNumber} of ${challenge.durationDays}`}
+                        </Text>
+                      </View>
+                      <Pressable
+                        onPress={() => endChallenge(challenge.id, challenge.title)}
+                        hitSlop={12}
+                        accessibilityRole="button"
+                        accessibilityLabel="Quit challenge"
+                      >
+                        <Ionicons name="close-circle-outline" size={20} color={C.textQuaternary} />
+                      </Pressable>
+                    </Pressable>
+                    <View style={s.challengeProgressTrack}>
+                      <View style={[s.challengeProgressFill, { width: `${progress * 100}%` }]} />
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : (
+            <Pressable style={s.emptyChallengeCard} onPress={() => router.push("/challenges")}>
+              <Ionicons name="flag-outline" size={18} color={C.iconSecondary} />
+              <Text style={s.emptyChallengeText}>Try a preset challenge like 69 Hard</Text>
+              <Ionicons name="chevron-forward" size={16} color={C.textQuaternary} />
+            </Pressable>
           )}
         </View>
       </ScrollView>

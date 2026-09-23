@@ -70,6 +70,13 @@ export const habitOps = {
       db.update(habits).set(data).where(eq(habits.id, id)).returning()
     );
   },
+  // Swaps sortOrder between two habits, e.g. to move one up/down in the list.
+  async swapSortOrder(idA: number, sortOrderA: number, idB: number, sortOrderB: number) {
+    return await withInitializedDb(async () => {
+      await db.update(habits).set({ sortOrder: sortOrderB }).where(eq(habits.id, idA));
+      await db.update(habits).set({ sortOrder: sortOrderA }).where(eq(habits.id, idB));
+    });
+  },
   // Soft delete: the habit disappears from active lists but its completions stay
   // available for profile stats and history.
   async delete(id: number) {
