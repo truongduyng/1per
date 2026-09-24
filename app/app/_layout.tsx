@@ -6,7 +6,7 @@ import {
 import { router, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import "react-native-reanimated";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
@@ -33,17 +33,22 @@ export default function RootLayout() {
 function AppLayout() {
   const colorScheme = useColorScheme();
   const { isLoading, hasActiveSubscription } = useRevenueCat();
-  const isProfileReady = useRef(false);
+  const [isProfileReady, setIsProfileReady] = useState(false);
 
-  const maybeHideSplash = useCallback(() => {
-    if (!isLoading && isProfileReady.current) {
+  // Driven by state (not a ref + callback) so whichever of RevenueCat or the
+  // profile finishes last triggers the hide. ProfileInitializer captures its
+  // callbacks once on mount, so a callback closing over `isLoading` goes stale.
+  useEffect(() => {
+    if (!isLoading && isProfileReady) {
       SplashScreen.hideAsync();
     }
-  }, [isLoading]);
+  }, [isLoading, isProfileReady]);
 
+  // Failsafe: never leave the user stuck on the splash if a startup call hangs.
   useEffect(() => {
-    maybeHideSplash();
-  }, [maybeHideSplash]);
+    const timeout = setTimeout(() => SplashScreen.hideAsync(), 10000);
+    return () => clearTimeout(timeout);
+  }, []);
 
   const handleInitialized = (needsOnboarding: boolean) => {
     if (needsOnboarding || !hasActiveSubscription()) {
@@ -51,10 +56,7 @@ function AppLayout() {
     }
   };
 
-  const handleProfileReady = () => {
-    isProfileReady.current = true;
-    maybeHideSplash();
-  };
+  const handleProfileReady = () => setIsProfileReady(true);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
