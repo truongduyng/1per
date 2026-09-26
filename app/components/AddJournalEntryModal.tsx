@@ -35,8 +35,9 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
   // Placeholder ratio until the picked photo reports its real dimensions.
   const [photoAspectRatio, setPhotoAspectRatio] = useState(4 / 3);
   const [saving, setSaving] = useState(false);
-  const voice = useVoiceTranscription((text) =>
-    setNote(text.slice(0, NOTE_MAX_LENGTH)),
+  const voice = useVoiceTranscription(
+    (text) => setNote(text.slice(0, NOTE_MAX_LENGTH)),
+    (message) => Alert.alert("Couldn't transcribe", message),
   );
   const isRecording = voice.status === "listening";
 
@@ -201,8 +202,12 @@ export function AddJournalEntryModal({ visible, onClose, onSave }: Props) {
               </Pressable>
             </View>
             <TextInput
-              style={s.noteInput}
-              placeholder="What's on your mind today? Type, or tap Talk to speak it."
+              style={[s.noteInput, isRecording && s.noteInputRecording]}
+              placeholder={
+                isRecording
+                  ? "Listening… speak now"
+                  : "What's on your mind today? Type, or tap Talk to speak it."
+              }
               placeholderTextColor={C.textQuaternary}
               value={note}
               onChangeText={setNote}
@@ -349,6 +354,10 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       lineHeight: 21,
       color: C.textPrimary,
       textAlignVertical: "top",
+    },
+    noteInputRecording: {
+      borderColor: C.accentBorder,
+      opacity: 0.7,
     },
     counter: {
       marginTop: 6,
