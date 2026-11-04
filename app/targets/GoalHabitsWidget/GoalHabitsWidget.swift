@@ -2,10 +2,11 @@ import AppIntents
 import SwiftUI
 import WidgetKit
 
-private let appGroup = "group.app.kadoze.yikudo"
-private let storageKey = "goalHabitsSnapshot"
+let appGroup = "group.app.kadoze.yikudo"
+let goalHabitsStorageKey = "goalHabitsSnapshot"
 private let affirmationStorageKey = "dailyAffirmation"
 private let pendingTogglesKey = "pendingHabitToggles"
+private let yearProgressStorageKey = "yearProgressSnapshot"
 private let maxHabitsShown = 3
 
 // Tapping a habit row can't write to the app's SQLite database from the
@@ -38,11 +39,12 @@ struct ToggleHabitDoneIntent: AppIntent {
 
     WidgetCenter.shared.reloadTimelines(ofKind: "GoalHabitsWidget")
     WidgetCenter.shared.reloadTimelines(ofKind: "OverviewWidget")
+    WidgetCenter.shared.reloadTimelines(ofKind: "TodayTimelineWidget")
     return .result()
   }
 }
 
-private func readPendingToggles(from defaults: UserDefaults?) -> [Int] {
+func readPendingToggles(from defaults: UserDefaults?) -> [Int] {
   guard let data = defaults?.data(forKey: pendingTogglesKey) else { return [] }
   guard let raw = try? JSONSerialization.jsonObject(with: data) as? [Int] else { return [] }
   return raw
@@ -107,7 +109,7 @@ struct GoalHabitsProvider: TimelineProvider {
 }
 
 private func decodeGoalHabits(from defaults: UserDefaults?) -> (goalText: String, goalDone: Bool, habits: [GoalHabitsWidgetHabit]) {
-  let payload = defaults?.data(forKey: storageKey).flatMap {
+  let payload = defaults?.data(forKey: goalHabitsStorageKey).flatMap {
     try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
   } ?? nil
 
@@ -183,6 +185,85 @@ struct OverviewProvider: TimelineProvider {
 }
 
 struct GoalHabitsWidgetView: View {
+  @Environment(\.widgetFamily) private var family
+  var entry: GoalHabitsEntry
+
+  var body: some View {
+    switch family {
+    case .accessoryCircular:
+      GoalHabitsCircularView(entry: entry)
+    case .accessoryRectangular:
+      GoalHabitsRectangularView(entry: entry)
+    default:
+      GoalHabitsMediumView(entry: entry)
+    }
+  }
+}
+
+// Lock Screen: today's progress ring, counting the main task as one item
+// alongside the habits.
+struct GoalHabitsCircularView: View {
+  var entry: GoalHabitsEntry
+
+  private var total: Int { entry.habits.count + 1 }
+  private var done: Int { entry.habits.filter(\.done).count + (entry.goalDone ? 1 : 0) }
+
+  var body: some View {
+    Gauge(value: Double(done), in: 0...Double(total)) {
+      Image(systemName: "target")
+    } currentValueLabel: {
+      Text("\(done)/\(total)")
+        .font(.system(size: 14, weight: .bold, design: .rounded))
+    }
+    .gaugeStyle(.accessoryCircularCapacity)
+    .containerBackground(for: .widget) {
+      AccessoryWidgetBackground()
+    }
+  }
+}
+
+// Lock Screen: the main task, habit count, and the next habit still to do.
+struct GoalHabitsRectangularView: View {
+  var entry: GoalHabitsEntry
+
+  private var doneCount: Int { entry.habits.filter(\.done).count }
+  private var nextHabit: GoalHabitsWidgetHabit? { entry.habits.first { !$0.done } }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 1) {
+      HStack(spacing: 4) {
+        Image(systemName: entry.goalDone ? "checkmark.circle.fill" : "target")
+        Text(entry.goalText.isEmpty ? "Set your main task" : entry.goalText)
+          .strikethrough(entry.goalDone)
+          .lineLimit(1)
+      }
+      .font(.system(size: 15, weight: .bold, design: .rounded))
+      .widgetAccentable()
+
+      if entry.habits.isEmpty {
+        Text("No habits today")
+          .foregroundStyle(.secondary)
+      } else {
+        Text("\(doneCount)/\(entry.habits.count) habits done")
+          .foregroundStyle(.secondary)
+        if let nextHabit {
+          Label(nextHabit.title, systemImage: "circle")
+            .lineLimit(1)
+        } else {
+          Label("All habits done", systemImage: "checkmark.circle.fill")
+            .lineLimit(1)
+        }
+      }
+    }
+    .font(.system(size: 13, weight: .medium, design: .rounded))
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .containerBackground(for: .widget) {
+      Color.clear
+    }
+  }
+}
+
+struct GoalHabitsMediumView: View {
   var entry: GoalHabitsEntry
 
   private var visibleHabits: [GoalHabitsWidgetHabit] {
@@ -239,7 +320,7 @@ private func goalRow(goalText: String, goalDone: Bool, titleSize: CGFloat, iconS
 }
 
 @ViewBuilder
-private func habitRow(_ habit: GoalHabitsWidgetHabit) -> some View {
+func habitRow(_ habit: GoalHabitsWidgetHabit) -> some View {
   Button(intent: ToggleHabitDoneIntent(habitId: habit.id)) {
     HStack(spacing: 8) {
       Image(systemName: habit.done ? "checkmark.circle.fill" : "circle")
@@ -321,11 +402,201 @@ struct OverviewWidgetView: View {
   }
 }
 
+// MARK: - Year progress ("1% better every day")
+
+struct YearProgressEntry: TimelineEntry {
+  let date: Date
+  let year: Int
+  let keptDays: Int
+  // Share of elapsed days kept per month (0-1); nil for months still ahead.
+  let months: [Double?]
+  let currentMonth: Int
+  let daysLeft: Int
+
+  // Compounding 1% per kept day: 1.01^keptDays.
+  var multiplier: Double { pow(1.01, Double(keptDays)) }
+
+  var multiplierLabel: String {
+    String(format: multiplier >= 10 ? "×%.1f" : "×%.2f", multiplier)
+  }
+}
+
+struct YearProgressProvider: TimelineProvider {
+  func placeholder(in context: Context) -> YearProgressEntry {
+    makeEntry(year: nil, keptDays: 142, months: [0.9, 0.8, 0.7, 0.85, 0.6, 0.75, 0.9, 0.8, 0.5, nil, nil, nil])
+  }
+
+  func getSnapshot(in context: Context, completion: @escaping (YearProgressEntry) -> Void) {
+    completion(readEntry())
+  }
+
+  func getTimeline(in context: Context, completion: @escaping (Timeline<YearProgressEntry>) -> Void) {
+    // Days left and the current month are derived from the clock, so refresh
+    // right after midnight even if the app hasn't pushed a new snapshot.
+    let calendar = Calendar.current
+    let midnight = calendar.startOfDay(for: Date()).addingTimeInterval(24 * 60 * 60)
+    let nextRefresh = min(midnight, Date().addingTimeInterval(60 * 60))
+    completion(Timeline(entries: [readEntry()], policy: .after(nextRefresh)))
+  }
+
+  private func readEntry() -> YearProgressEntry {
+    let defaults = UserDefaults(suiteName: appGroup)
+    let payload = defaults?.data(forKey: yearProgressStorageKey).flatMap {
+      try? JSONSerialization.jsonObject(with: $0) as? [String: Any]
+    } ?? nil
+
+    let year = payload?["year"] as? Int
+    let keptDays = (payload?["keptDays"] as? Int) ?? 0
+    let monthsRaw = (payload?["months"] as? [Double]) ?? []
+    let months: [Double?] = (0..<12).map { index in
+      guard index < monthsRaw.count, monthsRaw[index] >= 0 else { return nil }
+      return monthsRaw[index]
+    }
+    return makeEntry(year: year, keptDays: keptDays, months: months)
+  }
+
+  private func makeEntry(year snapshotYear: Int?, keptDays: Int, months: [Double?]) -> YearProgressEntry {
+    let calendar = Calendar.current
+    let now = Date()
+    let year = calendar.component(.year, from: now)
+    let currentMonth = calendar.component(.month, from: now)
+    let dayOfYear = calendar.ordinality(of: .day, in: .year, for: now) ?? 1
+    let daysInYear = calendar.range(of: .day, in: .year, for: now)?.count ?? 365
+
+    // A snapshot from last year (app not opened since New Year) starts fresh.
+    let isStale = snapshotYear != nil && snapshotYear != year
+    return YearProgressEntry(
+      date: now,
+      year: year,
+      keptDays: isStale ? 0 : keptDays,
+      months: isStale ? Array(repeating: nil, count: 12) : months,
+      currentMonth: currentMonth,
+      daysLeft: daysInYear - dayOfYear
+    )
+  }
+}
+
+struct YearProgressWidgetView: View {
+  @Environment(\.widgetFamily) private var family
+  var entry: YearProgressEntry
+
+  var body: some View {
+    switch family {
+    case .accessoryRectangular:
+      YearProgressRectangularView(entry: entry)
+    default:
+      YearProgressMediumView(entry: entry)
+    }
+  }
+}
+
+struct YearProgressMediumView: View {
+  var entry: YearProgressEntry
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 10) {
+      HStack(alignment: .firstTextBaseline) {
+        Text(String(entry.year))
+          .font(.system(size: 22, weight: .heavy, design: .rounded))
+          .foregroundStyle(Color("goalHabitsInk"))
+        Spacer(minLength: 0)
+        Text(entry.multiplierLabel)
+          .font(.system(size: 22, weight: .heavy, design: .rounded))
+          .foregroundStyle(Color("goalHabitsAccent"))
+          .contentTransition(.numericText())
+      }
+
+      HStack(spacing: 5) {
+        ForEach(0..<12, id: \.self) { index in
+          VStack(spacing: 4) {
+            monthPill(index: index)
+            Text("\(index + 1)")
+              .font(.system(size: 10, weight: index + 1 == entry.currentMonth ? .heavy : .medium, design: .rounded))
+              .foregroundStyle(index + 1 == entry.currentMonth ? Color("goalHabitsInk") : Color("goalHabitsMuted"))
+          }
+        }
+      }
+
+      HStack {
+        Text("\(entry.keptDays) days 1% better")
+        Spacer(minLength: 0)
+        Text("\(entry.daysLeft) days left")
+      }
+      .font(.system(size: 12, weight: .semibold, design: .rounded))
+      .foregroundStyle(Color("goalHabitsMuted"))
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .padding(16)
+    .containerBackground(for: .widget) {
+      Color("goalHabitsSurface")
+    }
+  }
+
+  @ViewBuilder
+  private func monthPill(index: Int) -> some View {
+    let isCurrent = index + 1 == entry.currentMonth
+    let fill: Color = {
+      guard let ratio = entry.months[index] else {
+        return Color("goalHabitsMuted").opacity(0.15)
+      }
+      return Color("goalHabitsAccent").opacity(0.2 + 0.8 * ratio)
+    }()
+
+    Capsule()
+      .fill(fill)
+      .overlay(
+        Capsule().strokeBorder(Color("goalHabitsInk"), lineWidth: isCurrent ? 1.5 : 0)
+      )
+      .frame(maxWidth: .infinity)
+      .frame(height: 34)
+  }
+}
+
+// Lock Screen: the compounding multiplier plus a 12-month strip.
+struct YearProgressRectangularView: View {
+  var entry: YearProgressEntry
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 3) {
+      HStack(alignment: .firstTextBaseline) {
+        Text(entry.multiplierLabel)
+          .font(.system(size: 17, weight: .heavy, design: .rounded))
+          .widgetAccentable()
+        Spacer(minLength: 0)
+        Text("\(entry.daysLeft)d left")
+          .font(.system(size: 12, weight: .semibold, design: .rounded))
+          .foregroundStyle(.secondary)
+      }
+
+      HStack(spacing: 2) {
+        ForEach(0..<12, id: \.self) { index in
+          Capsule()
+            .fill(Color.primary.opacity(entry.months[index].map { 0.25 + 0.75 * $0 } ?? 0.12))
+            .frame(maxWidth: .infinity)
+            .frame(height: index + 1 == entry.currentMonth ? 14 : 10)
+        }
+      }
+
+      Text("\(entry.keptDays) days 1% better")
+        .font(.system(size: 12, weight: .medium, design: .rounded))
+        .foregroundStyle(.secondary)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .containerBackground(for: .widget) {
+      Color.clear
+    }
+  }
+}
+
 @main
 struct GoalHabitsWidgetBundle: WidgetBundle {
   var body: some Widget {
     GoalHabitsWidget()
     OverviewWidget()
+    YearProgressWidget()
+    WeekStripWidget()
+    MonthGridWidget()
+    TodayTimelineWidget()
   }
 }
 
@@ -338,7 +609,7 @@ struct GoalHabitsWidget: Widget {
     }
     .configurationDisplayName("Today's Focus")
     .description("Your main task and habit checklist for today.")
-    .supportedFamilies([.systemMedium])
+    .supportedFamilies([.systemMedium, .accessoryCircular, .accessoryRectangular])
     .contentMarginsDisabled()
   }
 }
@@ -353,6 +624,20 @@ struct OverviewWidget: Widget {
     .configurationDisplayName("1Per Overview")
     .description("Your daily affirmation, main task, and habit checklist together.")
     .supportedFamilies([.systemLarge])
+    .contentMarginsDisabled()
+  }
+}
+
+struct YearProgressWidget: Widget {
+  let kind = "YearProgressWidget"
+
+  var body: some WidgetConfiguration {
+    StaticConfiguration(kind: kind, provider: YearProgressProvider()) { entry in
+      YearProgressWidgetView(entry: entry)
+    }
+    .configurationDisplayName("1% Every Day")
+    .description("How much better you've compounded this year, month by month.")
+    .supportedFamilies([.systemMedium, .accessoryRectangular])
     .contentMarginsDisabled()
   }
 }

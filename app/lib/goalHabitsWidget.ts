@@ -1,6 +1,8 @@
 import { ExtensionStorage } from "@kingstinct/expo-apple-targets";
 
 export const GOAL_HABITS_WIDGET_KIND = "GoalHabitsWidget";
+// Also reads goalHabitsSnapshot, laid out as a timeline of today.
+export const TODAY_TIMELINE_WIDGET_KIND = "TodayTimelineWidget";
 export const GOAL_HABITS_APP_GROUP = "group.app.kadoze.yikudo";
 export const GOAL_HABITS_WIDGET_STORAGE_KEY = "goalHabitsSnapshot";
 // Written by the widget's ToggleHabitDoneIntent (tap-to-complete on the
@@ -13,6 +15,8 @@ export type GoalHabitsWidgetHabit = {
   id: number;
   title: string;
   done: boolean;
+  // Unix ms when the habit was checked off - places it on the timeline.
+  doneAt: number | null;
 };
 
 export type GoalHabitsSnapshot = {
@@ -20,6 +24,9 @@ export type GoalHabitsSnapshot = {
   goalText: string;
   goalDone: boolean;
   habits: GoalHabitsWidgetHabit[];
+  goalDoneAt: number | null;
+  focusMinutes: number;
+  eveningResetDoneAt: number | null;
 };
 
 export function syncGoalHabitsWidget(snapshot: GoalHabitsSnapshot) {
@@ -32,6 +39,7 @@ export function syncGoalHabitsWidget(snapshot: GoalHabitsSnapshot) {
     snapshot as unknown as Record<string, string | number>,
   );
   ExtensionStorage.reloadWidget(GOAL_HABITS_WIDGET_KIND);
+  ExtensionStorage.reloadWidget(TODAY_TIMELINE_WIDGET_KIND);
 }
 
 /** Habit ids tapped in the widget since the app last reconciled them. */

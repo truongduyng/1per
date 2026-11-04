@@ -18,11 +18,20 @@ import {
   readPendingHabitToggles,
   clearPendingHabitToggles,
 } from "@/lib/goalHabitsWidget";
+import {
+  buildYearProgress,
+  syncYearProgressWidget,
+} from "@/lib/yearProgressWidget";
+import {
+  buildHistory,
+  historyWindowStartKey,
+  syncHistoryWidgets,
+} from "@/lib/historyWidget";
 import { getTodayInLocalTimezone, getLocalDateString } from "@/lib/timezone";
 import { useProfile } from "@/hooks/useProfile";
 import { useTheme } from "@/hooks/useTheme";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
-import { desc, isNull } from "drizzle-orm";
+import { desc, gte, isNull } from "drizzle-orm";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
 import React, { useEffect, useMemo, useState, useRef } from "react";
@@ -87,6 +96,16 @@ export default function HomeScreen() {
   const { data: focusRows } = useLiveQuery(
     db.select().from(dailyFocus).orderBy(desc(dailyFocus.date)).limit(5),
   );
+  // Covers both the year-progress widget and the week/month history widgets,
+  // whose window can reach back into last year in early January.
+  const yearStartKey = `${todayKey.slice(0, 4)}-01-01`;
+  const historyStartKey = historyWindowStartKey(today);
+  const focusStartKey =
+    historyStartKey < yearStartKey ? historyStartKey : yearStartKey;
+  const { data: yearFocusRows } = useLiveQuery(
+    db.select().from(dailyFocus).where(gte(dailyFocus.date, focusStartKey)),
+    [focusStartKey],
+  );
   const todayFocus = useMemo(
     () => focusRows?.find((f) => f.date === todayKey) ?? null,
     [focusRows, todayKey],
@@ -119,6 +138,15 @@ export default function HomeScreen() {
       if (c.date === todayKey && c.status === "done") set.add(c.habitId);
     }
     return set;
+  }, [allCompletions, todayKey]);
+  const doneAtById = useMemo(() => {
+    const map = new Map<number, number>();
+    for (const c of allCompletions ?? []) {
+      if (c.date === todayKey && c.status === "done") {
+        map.set(c.habitId, c.createdAt.getTime());
+      }
+    }
+    return map;
   }, [allCompletions, todayKey]);
   const doneIdsRef = useRef(doneIds);
   useEffect(() => {
@@ -222,9 +250,31 @@ export default function HomeScreen() {
         id: habit.id,
         title: habit.title,
         done: doneIds.has(habit.id),
+        doneAt: doneAtById.get(habit.id) ?? null,
       })),
+      goalDoneAt: todayFocus?.completedAt?.getTime() ?? null,
+      focusMinutes: todayFocus?.focusMinutes ?? 0,
+      eveningResetDoneAt:
+        todayFocus?.eveningResetCompletedAt?.getTime() ?? null,
     });
-  }, [todayKey, goalText, isGoalComplete, todayHabits, doneIds]);
+  }, [todayKey, goalText, isGoalComplete, todayHabits, doneIds, doneAtById, todayFocus]);
+
+  useEffect(() => {
+    syncHistoryWidgets(
+      buildHistory(
+        today,
+        allHabits ?? [],
+        allCompletions ?? [],
+        yearFocusRows ?? [],
+      ),
+    );
+  }, [today, allHabits, allCompletions, yearFocusRows]);
+
+  useEffect(() => {
+    syncYearProgressWidget(
+      buildYearProgress(todayKey, yearFocusRows ?? [], allCompletions ?? []),
+    );
+  }, [todayKey, yearFocusRows, allCompletions]);
 
   const habitsDoneCount = todayHabits.filter((habit) =>
     doneIds.has(habit.id),
