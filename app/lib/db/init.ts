@@ -1,5 +1,5 @@
 import { deleteAllHabitPhotos } from '@/lib/habitPhotos';
-import { deleteAllJournalPhotos } from '@/lib/journalPhotos';
+import { deleteAllJournalMedia, deleteAllJournalPhotos } from '@/lib/journalPhotos';
 import { storage } from '@/lib/storage';
 import { expoDb } from './database';
 
@@ -13,6 +13,7 @@ export async function resetDatabase() {
     }
     deleteAllHabitPhotos();
     deleteAllJournalPhotos();
+    deleteAllJournalMedia();
     storage.clearAll();
     initializationPromise = null;
     await ensureDatabaseInitialized();
@@ -203,6 +204,23 @@ export async function initializeDatabase() {
         created_at INTEGER NOT NULL DEFAULT (unixepoch())
       );
     `);
+
+    const journalColumns = expoDb.getAllSync<{ name: string }>(
+      `PRAGMA table_info(journal_entries);`
+    );
+    for (const [column, type] of [
+      ['title', 'TEXT'],
+      ['tags', 'TEXT'],
+      ['links', 'TEXT'],
+      ['attachments', 'TEXT'],
+      ['checklist', 'TEXT'],
+      ['remind_at', 'INTEGER'],
+      ['updated_at', 'INTEGER'],
+    ] as const) {
+      if (!journalColumns.some((c) => c.name === column)) {
+        expoDb.execSync(`ALTER TABLE journal_entries ADD COLUMN ${column} ${type};`);
+      }
+    }
   } catch (error) {
     console.error('Failed to initialize database:', error);
     throw error;

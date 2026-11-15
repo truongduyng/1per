@@ -73,8 +73,18 @@ export const journalEntries = sqliteTable('journal_entries', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   date: text('date').notNull(),                  // 'YYYY-MM-DD'
   note: text('note'),
-  photoUri: text('photo_uri'),                   // local file:// photo attached to the entry
+  photoUri: text('photo_uri'),                   // legacy single photo (pre-attachments); still shown
+  title: text('title'),
+  // JSON-encoded arrays (nullable so older rows/backups need no backfill).
+  // Shapes live in lib/journal.ts: tags string[], links string[],
+  // attachments JournalAttachment[], checklist JournalChecklistItem[].
+  tags: text('tags'),
+  links: text('links'),
+  attachments: text('attachments'),
+  checklist: text('checklist'),
+  remindAt: integer('remind_at', { mode: 'timestamp' }), // local notification time, if any
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }),
 });
 
 // ── daily_affirmations ───────────────────────────────────────────────────────

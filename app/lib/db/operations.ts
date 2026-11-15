@@ -3,12 +3,20 @@ import {
   db,
   profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, challenges, journalEntries,
   type NewProfile, type NewHabit, type NewHabitCompletion, type NewDailyFocus,
-  type NewDailyAffirmation, type NewJournalEntry,
+  type NewDailyAffirmation,
 } from './database';
 import { ensureDatabaseInitialized } from './init';
 import { getLocalDateString } from '../timezone';
 import type { PresetChallenge } from '../presetChallenges';
 import { notifyDataChanged } from './changeListener';
+import {
+  emptyJournalDraft,
+  encodeJsonArray,
+  extractHashtags,
+  mergeTags,
+  type JournalChecklistItem,
+  type JournalDraft,
+} from '../journal';
 
 const ALL_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
@@ -362,13 +370,57 @@ export const dailyFocusOps = {
 };
 
 // ── journalEntryOps ───────────────────────────────────────────────────────────
+// Rich fields (tags, links, attachments, checklist) are stored as JSON text;
+// callers pass a JournalDraft from lib/journal.ts and get rows back.
+function journalValues(draft: JournalDraft) {
+  const note = draft.note.trim();
+  return {
+    title: draft.title.trim() || null,
+    note: note || null,
+    photoUri: draft.photoUri?.trim() || null,
+    // Inline #hashtags in the note count as tags so typing them is enough.
+    tags: encodeJsonArray(mergeTags(draft.tags, extractHashtags(note))),
+    links: encodeJsonArray(draft.links),
+    attachments: encodeJsonArray(draft.attachments),
+    checklist: encodeJsonArray(
+      draft.checklist
+        .map((item) => ({ ...item, text: item.text.trim() }))
+        .filter((item) => item.text.length > 0),
+    ),
+    remindAt: draft.remindAt,
+  };
+}
+
 export const journalEntryOps = {
-  async create(data: Omit<NewJournalEntry, 'date'> & { date?: string }) {
-    const date = data.date ?? getLocalDateString(new Date());
-    const note = data.note?.trim() || null;
-    const photoUri = data.photoUri?.trim() || null;
+  async create(draft: Partial<JournalDraft> & { date?: string }) {
+    const date = draft.date ?? getLocalDateString(new Date());
+    const values = journalValues({ ...emptyJournalDraft(), ...draft });
     return await withInitializedDb(() =>
-      db.insert(journalEntries).values({ date, note, photoUri }).returning()
+      db.insert(journalEntries).values({ date, ...values, updatedAt: new Date() }).returning()
+    );
+  },
+
+  async update(id: number, draft: JournalDraft) {
+    return await withInitializedDb(() =>
+      db.update(journalEntries)
+        .set({ ...journalValues(draft), updatedAt: new Date() })
+        .where(eq(journalEntries.id, id))
+        .returning()
+    );
+  },
+
+  async getById(id: number) {
+    const result = await withInitializedDb(() =>
+      db.select().from(journalEntries).where(eq(journalEntries.id, id)).limit(1)
+    );
+    return result[0] ?? null;
+  },
+
+  async setChecklist(id: number, checklist: JournalChecklistItem[]) {
+    return await withInitializedDb(() =>
+      db.update(journalEntries)
+        .set({ checklist: encodeJsonArray(checklist), updatedAt: new Date() })
+        .where(eq(journalEntries.id, id))
     );
   },
 

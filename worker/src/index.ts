@@ -157,7 +157,18 @@ const MEDIA_KINDS: Record<string, { contentType: string; maxBytes: number }> = {
   focus: { contentType: "video/mp4", maxBytes: 100_000_000 },
   "habit-photo": { contentType: "image/jpeg", maxBytes: 15_000_000 },
   "journal-photo": { contentType: "image/jpeg", maxBytes: 15_000_000 },
+  // Journal attachments: photos, videos, or arbitrary files. The client's
+  // Content-Type is kept (see mediaContentType) so files restore as-is.
+  "journal-media": { contentType: "application/octet-stream", maxBytes: 100_000_000 },
 };
+
+const PASSTHROUGH_CONTENT_TYPE_KINDS = new Set(["journal-media"]);
+
+function mediaContentType(request: Request, kind: string, fallback: string) {
+  if (!PASSTHROUGH_CONTENT_TYPE_KINDS.has(kind)) return fallback;
+  const sent = (request.headers.get("Content-Type") ?? "").split(";")[0].trim().toLowerCase();
+  return /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(sent) ? sent : fallback;
+}
 
 function isMediaId(value: string) {
   return /^[a-zA-Z0-9_-]{1,64}$/.test(value);
@@ -199,7 +210,7 @@ async function handleMediaPut(request: Request, env: Env, kind: string, id: stri
   }
 
   await env.MEDIA.put(mediaKey(userId, kind, id), request.body, {
-    httpMetadata: { contentType: config.contentType },
+    httpMetadata: { contentType: mediaContentType(request, kind, config.contentType) },
   });
   return json({ ok: true }, { status: 201 });
 }

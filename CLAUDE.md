@@ -56,6 +56,7 @@ app/           Expo Router file-based routes
   (tabs)/      Bottom-tab shell using expo-router unstable-native-tabs (NativeTabs)
     index.tsx     Home / unified dashboard
     routines.tsx  Habit tracker
+    journal.tsx   Private "message yourself" timeline (search, filters, #tags)
     profile.tsx   Account & settings
   onboarding.tsx  First-run flow (gates app until complete)
   focus.tsx       Focus session screen
@@ -85,7 +86,8 @@ constants/
 ### Data layer
 
 - **SQLite via expo-sqlite + Drizzle ORM** - local-first. Versioned snapshots can be backed up to the Worker after Sign in with Apple.
-- Schema tables: `profiles`, `habits`, `habit_completions`, `daily_focus`, `daily_affirmations`.
+- Schema tables: `profiles`, `challenges`, `habits`, `habit_completions`, `daily_focus`, `daily_affirmations`, `journal_entries`.
+- Journal messages (`journal_entries`) store tags, links, attachments (photo/video/file) and checklist as JSON text columns; shapes, parsing, search and reminder scheduling live in `lib/journal.ts`, save/delete side-effects (files, cloud media, notifications) in `lib/journalActions.ts`. Tags come from inline `#hashtags`; links are auto-extracted from the text. Reminders are local notifications with identifier `journal-reminder-<id>` and are reconciled on Journal mount and after a cloud restore.
 - `initializeDatabase()` runs `CREATE TABLE IF NOT EXISTS` on cold start via `ProfileInitializer`.
 - `resetDatabase()` drops all tables and clears MMKV - used in dev/reset flows.
 - Dates stored as `TEXT` (`'YYYY-MM-DD'`) for daily keys; timestamps stored as `INTEGER` (unix epoch).
