@@ -141,7 +141,6 @@ export async function deleteJournalMessage(entry: ParsedJournalEntry) {
 
 export async function setJournalReminder(entry: ParsedJournalEntry, remindAt: Date | null) {
   const updated = await journalEntryOps.update(entry.id, {
-    title: entry.title,
     note: entry.note,
     photoUri: entry.photoUri,
     tags: entry.tags,

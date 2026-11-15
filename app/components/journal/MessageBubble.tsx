@@ -144,8 +144,6 @@ export function MessageBubble({ entry, highlighted, onLongPress, onToggleItem, o
       style={[s.bubble, highlighted && s.highlighted]}
       accessibilityHint="Long press for options"
     >
-      {entry.title ? <Text style={s.title}>{entry.title}</Text> : null}
-
       {visual.length === 1 ? (
         <MediaTile
           attachment={visual[0]}
@@ -293,7 +291,6 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       marginBottom: 8,
     },
     highlighted: { borderColor: C.accent, borderWidth: 2 },
-    title: { fontSize: 15, fontWeight: "700", color: C.textPrimary },
     note: { fontSize: 15, lineHeight: 21, color: C.textPrimary },
     inlineTag: { color: C.accentText, fontWeight: "600" },
     inlineLink: { color: C.accentText, textDecorationLine: "underline" },

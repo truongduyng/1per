@@ -202,7 +202,6 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
     setSending(true);
     try {
       const draft = {
-        title: editing?.title ?? "",
         note: text,
         photoUri,
         tags: [], // derived from #hashtags in the text

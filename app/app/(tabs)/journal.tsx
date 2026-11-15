@@ -249,7 +249,7 @@ export default function JournalScreen() {
 
   const openActions = useCallback((entry: ParsedJournalEntry) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const shareText = [entry.title, entry.note, ...entry.links].filter(Boolean).join("\n");
+    const shareText = [entry.note, ...entry.links].filter(Boolean).join("\n");
     const actions: { label: string; destructive?: boolean; run: () => void }[] = [
       { label: "Edit", run: () => setEditing(entry) },
       {

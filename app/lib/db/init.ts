@@ -209,7 +209,6 @@ export async function initializeDatabase() {
       `PRAGMA table_info(journal_entries);`
     );
     for (const [column, type] of [
-      ['title', 'TEXT'],
       ['tags', 'TEXT'],
       ['links', 'TEXT'],
       ['attachments', 'TEXT'],

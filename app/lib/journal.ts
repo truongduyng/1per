@@ -26,7 +26,6 @@ export interface JournalChecklistItem {
 export interface ParsedJournalEntry {
   id: number;
   date: string;
-  title: string;
   note: string;
   photoUri: string | null;    // legacy single photo
   tags: string[];
@@ -39,7 +38,6 @@ export interface ParsedJournalEntry {
 }
 
 export interface JournalDraft {
-  title: string;
   note: string;
   photoUri: string | null;
   tags: string[];
@@ -51,7 +49,6 @@ export interface JournalDraft {
 
 export function emptyJournalDraft(): JournalDraft {
   return {
-    title: '',
     note: '',
     photoUri: null,
     tags: [],
@@ -91,7 +88,6 @@ export function parseJournalEntry(row: JournalEntry): ParsedJournalEntry {
   return {
     id: row.id,
     date: row.date,
-    title: row.title ?? '',
     note: row.note ?? '',
     photoUri: row.photoUri ?? null,
     tags: parseArray(row.tags, isString),
@@ -106,7 +102,6 @@ export function parseJournalEntry(row: JournalEntry): ParsedJournalEntry {
 
 export function draftFromEntry(entry: ParsedJournalEntry): JournalDraft {
   return {
-    title: entry.title,
     note: entry.note,
     photoUri: entry.photoUri,
     tags: [...entry.tags],
@@ -198,7 +193,6 @@ export type JournalFilter =
 
 export function journalEntryHaystack(entry: ParsedJournalEntry): string {
   return [
-    entry.title,
     entry.note,
     entry.tags.map((t) => `#${t}`).join(' '),
     entry.links.join(' '),
@@ -268,13 +262,13 @@ export async function ensureReminderPermission(): Promise<boolean> {
   return requested.status === 'granted';
 }
 
-function reminderContent(entry: Pick<ParsedJournalEntry, 'id' | 'title' | 'note' | 'checklist'>) {
+function reminderContent(entry: Pick<ParsedJournalEntry, 'id' | 'note' | 'checklist'>) {
   const open = entry.checklist.filter((c) => !c.done).length;
   const body =
     entry.note.trim().split('\n')[0]?.slice(0, 140) ||
     (open ? `${open} open checklist item${open === 1 ? '' : 's'}` : 'Tap to open your journal entry.');
   return {
-    title: entry.title.trim() || 'Journal reminder',
+    title: 'Journal reminder',
     body,
     sound: 'default' as const,
     data: { journalEntryId: entry.id, url: `/journal?entry=${entry.id}` },
@@ -283,7 +277,7 @@ function reminderContent(entry: Pick<ParsedJournalEntry, 'id' | 'title' | 'note'
 
 /** Schedules (or replaces) the entry's reminder; cancels it if remindAt is empty or past. */
 export async function syncJournalReminder(
-  entry: Pick<ParsedJournalEntry, 'id' | 'title' | 'note' | 'checklist' | 'remindAt'>,
+  entry: Pick<ParsedJournalEntry, 'id' | 'note' | 'checklist' | 'remindAt'>,
 ) {
   const identifier = journalReminderIdentifier(entry.id);
   try {

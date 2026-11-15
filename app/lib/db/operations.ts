@@ -375,7 +375,6 @@ export const dailyFocusOps = {
 function journalValues(draft: JournalDraft) {
   const note = draft.note.trim();
   return {
-    title: draft.title.trim() || null,
     note: note || null,
     photoUri: draft.photoUri?.trim() || null,
     // Inline #hashtags in the note count as tags so typing them is enough.

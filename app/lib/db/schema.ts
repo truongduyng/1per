@@ -74,7 +74,6 @@ export const journalEntries = sqliteTable('journal_entries', {
   date: text('date').notNull(),                  // 'YYYY-MM-DD'
   note: text('note'),
   photoUri: text('photo_uri'),                   // legacy single photo (pre-attachments); still shown
-  title: text('title'),
   // JSON-encoded arrays (nullable so older rows/backups need no backfill).
   // Shapes live in lib/journal.ts: tags string[], links string[],
   // attachments JournalAttachment[], checklist JournalChecklistItem[].
