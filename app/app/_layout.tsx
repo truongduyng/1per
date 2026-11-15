@@ -15,6 +15,7 @@ import ProfileInitializer from "@/components/ProfileInitializer";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ThemePreferenceProvider } from "@/contexts/ThemeContext";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
+import * as Notifications from "expo-notifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -44,6 +45,24 @@ function AppLayout() {
   useEffect(() => {
     maybeHideSplash();
   }, [maybeHideSplash]);
+
+  // Tapping a journal reminder opens the Journal tab scrolled to that message.
+  const lastResponse = Notifications.useLastNotificationResponse();
+  const handledResponseId = useRef<string | null>(null);
+  useEffect(() => {
+    const entryId = lastResponse?.notification.request.content.data?.journalEntryId;
+    const responseId = lastResponse?.notification.request.identifier ?? null;
+    if (!entryId || !responseId || handledResponseId.current === responseId) return;
+    handledResponseId.current = responseId;
+    // Give the navigator a tick to mount on cold start.
+    setTimeout(() => {
+      try {
+        router.navigate({ pathname: "/journal", params: { entry: String(entryId) } });
+      } catch (error) {
+        console.warn("Failed to open journal reminder:", error);
+      }
+    }, 300);
+  }, [lastResponse]);
 
   const handleInitialized = (needsOnboarding: boolean) => {
     if (needsOnboarding || !hasActiveSubscription()) {

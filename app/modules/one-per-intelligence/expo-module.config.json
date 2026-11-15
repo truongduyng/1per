@@ -1,0 +1,8 @@
+{
+  "platforms": ["apple"],
+  "apple": {
+    "modules": ["OnePerIntelligence"],
+    "podspecPath": "OnePerIntelligence.podspec",
+    "swiftModuleName": "OnePerIntelligence"
+  }
+}

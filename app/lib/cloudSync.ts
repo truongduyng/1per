@@ -15,6 +15,8 @@ import { storage, STORAGE_KEYS } from "./storage";
 import { Directory, File, Paths } from "expo-file-system";
 import { db, dailyFocus, habitCompletions, journalEntries } from "./db";
 import { eq } from "drizzle-orm";
+import { JOURNAL_MEDIA_DIR_NAME } from "./journalPhotos";
+import { encodeJsonArray, parseJournalEntry, reconcileJournalReminders } from "./journal";
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let syncInFlight: Promise<void> | null = null;
@@ -163,17 +165,29 @@ async function backupMediaFiles() {
   const journalPhotoRows = await db.select().from(journalEntries);
   for (const row of journalPhotoRows) {
     if (row.photoUri) await backupMedia("journal-photo", String(row.id), row.photoUri);
+    for (const attachment of parseJournalEntry(row).attachments) {
+      await backupMedia(
+        "journal-media",
+        journalMediaKey(row.id, attachment.id),
+        attachment.uri,
+        attachment.mimeType,
+      );
+    }
   }
+}
+
+function journalMediaKey(entryId: number, attachmentId: string) {
+  return `${entryId}-${attachmentId}`;
 }
 
 // Best-effort: never blocks or throws into the caller's flow, since local
 // storage (not the cloud copy) is the source of truth.
-async function backupMedia(kind: MediaKind, id: string, fileUri: string) {
+async function backupMedia(kind: MediaKind, id: string, fileUri: string, contentType?: string | null) {
   const token = getSessionToken();
   if (!token) return;
   if (!new File(fileUri).exists) return;
   try {
-    await uploadMedia(token, kind, id, fileUri);
+    await uploadMedia(token, kind, id, fileUri, contentType);
   } catch (error) {
     console.warn(`Failed to back up ${kind} media:`, error);
   }
@@ -189,6 +203,14 @@ export function deleteBackedUpJournalPhoto(id: number) {
   const token = getSessionToken();
   if (!token) return;
   void deleteMedia(token, "journal-photo", String(id)).catch(() => {});
+}
+
+export function deleteBackedUpJournalMedia(entryId: number, attachmentIds: string[]) {
+  const token = getSessionToken();
+  if (!token) return;
+  for (const attachmentId of attachmentIds) {
+    void deleteMedia(token, "journal-media", journalMediaKey(entryId, attachmentId)).catch(() => {});
+  }
 }
 
 // After restoring a snapshot on a fresh install, local file:// URIs recorded
@@ -221,6 +243,31 @@ export async function restoreMediaFiles() {
       await db.update(journalEntries).set({ photoUri: uri ?? null }).where(eq(journalEntries.id, row.id));
     });
   }
+
+  for (const row of journalPhotoRows) {
+    const { attachments } = parseJournalEntry(row);
+    if (!attachments.length) continue;
+    const restored = [];
+    for (const attachment of attachments) {
+      const ext = attachment.uri.split("?")[0].split(".").pop() || "bin";
+      let nextUri: string | null = attachment.uri;
+      await restoreOne(
+        "journal-media",
+        journalMediaKey(row.id, attachment.id),
+        attachment.uri,
+        JOURNAL_MEDIA_DIR_NAME,
+        `${attachment.id}.${ext}`,
+        async (uri) => { nextUri = uri; },
+      );
+      if (nextUri) restored.push({ ...attachment, uri: nextUri });
+    }
+    await db.update(journalEntries)
+      .set({ attachments: encodeJsonArray(restored) })
+      .where(eq(journalEntries.id, row.id));
+  }
+
+  // Reminders are device-local notifications; bring them back after a restore.
+  await reconcileJournalReminders((await db.select().from(journalEntries)).map(parseJournalEntry));
 }
 
 async function restoreOne(
