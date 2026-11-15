@@ -333,7 +333,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       paddingHorizontal: 8,
     },
     axisLabel: {
-      color: palette.white35,
+      color: palette.white55,
       fontSize: 11,
       fontWeight: "700",
     },
@@ -394,7 +394,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       borderColor: "#050505",
     },
     avatarPickerLabel: {
-      color: palette.white55,
+      color: palette.white75,
       fontSize: 12,
       fontWeight: "700",
     },
@@ -513,7 +513,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       fontWeight: "800",
     },
     reviewRole: {
-      color: palette.white45,
+      color: palette.white70,
       fontSize: 11,
       lineHeight: 15,
       fontWeight: "700",
@@ -549,7 +549,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       gap: 8,
     },
     goalSuggestionLabel: {
-      color: palette.white45,
+      color: palette.white70,
       fontSize: 12,
       lineHeight: 16,
       fontWeight: "800",
@@ -583,7 +583,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       color: "#fff",
     },
     choiceReason: {
-      color: palette.white45,
+      color: palette.white70,
       fontSize: 11,
       fontWeight: "600",
       marginTop: 2,
@@ -645,7 +645,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       color: "#fff",
     },
     habitSubtitle: {
-      color: palette.white45,
+      color: palette.white70,
       fontSize: 12,
       fontWeight: "500",
       lineHeight: 17,
@@ -698,7 +698,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       marginBottom: 5,
     },
     tourDescription: {
-      color: palette.white55,
+      color: palette.white75,
       fontSize: 13,
       lineHeight: 19,
       fontWeight: "500",
@@ -787,7 +787,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       gap: 5,
     },
     challengeMetaText: {
-      color: palette.white55,
+      color: palette.white75,
       fontSize: 12,
       fontWeight: "600",
     },
@@ -828,7 +828,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       borderTopColor: "rgba(255,255,255,0.06)",
     },
     challengeRulesLabel: {
-      color: palette.white45,
+      color: palette.white70,
       fontSize: 9,
       lineHeight: 12,
       fontWeight: "800",
@@ -857,7 +857,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       fontWeight: "700",
     },
     challengeRuleSubtitle: {
-      color: palette.white45,
+      color: palette.white70,
       fontSize: 11,
       lineHeight: 15,
       paddingTop: 1,
@@ -870,7 +870,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
     },
     challengeStartNoteText: {
       flex: 1,
-      color: palette.white55,
+      color: palette.white75,
       fontSize: 11,
       lineHeight: 16,
     },
@@ -911,7 +911,7 @@ export function makeStyles(C: ReturnType<typeof useTheme>) {
       borderTopColor: "rgba(255,255,255,0.06)",
     },
     amplifyCost: {
-      color: palette.white55,
+      color: palette.white75,
       fontSize: 12,
       lineHeight: 18,
       fontWeight: "500",

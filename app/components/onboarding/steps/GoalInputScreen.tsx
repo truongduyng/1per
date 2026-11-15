@@ -52,7 +52,7 @@ export function GoalInputScreen({
           value={value}
           onChangeText={onChange}
           placeholder="Type your answer..."
-          placeholderTextColor={palette.white35}
+          placeholderTextColor={palette.white55}
           multiline
           style={s.goalInput}
           selectionColor={ORANGE}
@@ -73,7 +73,7 @@ export function GoalInputScreen({
                 <Ionicons
                   name={active ? "checkmark-circle" : "ellipse-outline"}
                   size={18}
-                  color={active ? ORANGE : palette.white35}
+                  color={active ? ORANGE : palette.white55}
                 />
               </Pressable>
             );

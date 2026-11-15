@@ -80,7 +80,7 @@ export function IdentityScreen({
           {isAvatarPhotoUri(avatar) ? (
             <Image source={{ uri: avatar }} style={s.avatarPickerImage} />
           ) : (
-            <Ionicons name="person-outline" size={36} color={palette.white35} />
+            <Ionicons name="person-outline" size={36} color={palette.white55} />
           )}
           <View style={s.avatarPickerBadge}>
             <Ionicons name="camera" size={14} color="#FFFFFF" />
@@ -97,7 +97,7 @@ export function IdentityScreen({
           value={name}
           onChangeText={onNameChange}
           placeholder="What should we call you?"
-          placeholderTextColor={palette.white35}
+          placeholderTextColor={palette.white55}
           style={s.nameInput}
           selectionColor={ORANGE}
           maxLength={32}

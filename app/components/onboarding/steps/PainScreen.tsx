@@ -59,7 +59,7 @@ export function PainScreen({
                     <Ionicons
                       name={active ? "checkmark-circle" : "ellipse-outline"}
                       size={20}
-                      color={active ? ORANGE : palette.white25}
+                      color={active ? ORANGE : palette.white45}
                     />
                   </Pressable>
                 );

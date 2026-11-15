@@ -23,7 +23,7 @@ export default function GradientBackground({ variant = "default" }: GradientBack
 const styles = StyleSheet.create({
   onboardingRoot: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "#050505",
+    backgroundColor: "#16171A",
   },
   vignette: {
     ...StyleSheet.absoluteFill,

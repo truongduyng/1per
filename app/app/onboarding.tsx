@@ -211,7 +211,7 @@ function makeStyles() {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: "#050505",
+      backgroundColor: "#16171A",
     },
     safeArea: {
       flex: 1,

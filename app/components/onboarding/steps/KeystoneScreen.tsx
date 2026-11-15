@@ -103,7 +103,7 @@ export function KeystoneScreen({
               <Ionicons
                 name={active ? "checkmark-circle" : "ellipse-outline"}
                 size={22}
-                color={active ? ORANGE : palette.white25}
+                color={active ? ORANGE : palette.white45}
               />
             </Pressable>
           );
@@ -123,7 +123,7 @@ export function KeystoneScreen({
                 value={customHabitTitle}
                 onChangeText={handleCustomChange}
                 placeholder="Type your habit..."
-                placeholderTextColor={palette.white35}
+                placeholderTextColor={palette.white55}
                 style={s.customHabitInput}
                 selectionColor={ORANGE}
                 maxLength={60}
@@ -142,7 +142,7 @@ export function KeystoneScreen({
           <Ionicons
             name={isCustomActive ? "checkmark-circle" : "ellipse-outline"}
             size={22}
-            color={isCustomActive ? ORANGE : palette.white25}
+            color={isCustomActive ? ORANGE : palette.white45}
           />
         </Pressable>
       </View>

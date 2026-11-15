@@ -1130,7 +1130,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     },
 
     resetCard: {
-      backgroundColor: "#05070A",
+      backgroundColor: "#121419",
       borderRadius: 22,
       borderWidth: 1,
       borderColor: C.accentBorderSubtle,

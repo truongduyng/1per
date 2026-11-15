@@ -91,18 +91,18 @@ export function ChallengeSuggestionScreen({
                 <Ionicons
                   name={active ? "checkmark-circle" : "ellipse-outline"}
                   size={22}
-                  color={active ? ORANGE : palette.white25}
+                  color={active ? ORANGE : palette.white45}
                 />
               </View>
 
               <View style={s.challengeMetaRow}>
                 <View style={s.challengeMetaItem}>
-                  <Ionicons name="calendar-outline" size={13} color={palette.white55} />
+                  <Ionicons name="calendar-outline" size={13} color={palette.white75} />
                   <Text style={s.challengeMetaText}>{preset.durationDays} days</Text>
                 </View>
                 <View style={s.challengeMetaDot} />
                 <View style={s.challengeMetaItem}>
-                  <Ionicons name="repeat-outline" size={13} color={palette.white55} />
+                  <Ionicons name="repeat-outline" size={13} color={palette.white75} />
                   <Text style={s.challengeMetaText}>{preset.rules.length} daily rules</Text>
                 </View>
               </View>
@@ -141,7 +141,7 @@ export function ChallengeSuggestionScreen({
       </View>
 
       <View style={s.challengeStartNote}>
-        <Ionicons name="information-circle-outline" size={16} color={palette.white55} />
+        <Ionicons name="information-circle-outline" size={16} color={palette.white75} />
         <Text style={s.challengeStartNoteText}>
           If selected, these habits will be added when you finish setup. You can end the challenge
           anytime.
