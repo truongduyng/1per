@@ -102,12 +102,14 @@ export function uploadCloudSnapshot(identityToken: string, snapshot: CloudSnapsh
 
 const MEDIA_TIMEOUT_MS = 60_000;
 
-export type MediaKind = "focus" | "habit-photo" | "journal-photo";
+export type MediaKind = "focus" | "habit-photo" | "journal-photo" | "journal-media";
 
 const MEDIA_CONTENT_TYPE: Record<MediaKind, string> = {
   focus: "video/mp4",
   "habit-photo": "image/jpeg",
   "journal-photo": "image/jpeg",
+  // Journal attachments are any photo/video/file; uploads pass their own type.
+  "journal-media": "application/octet-stream",
 };
 
 export async function uploadMedia(
@@ -115,6 +117,7 @@ export async function uploadMedia(
   kind: MediaKind,
   id: string,
   fileUri: string,
+  contentType?: string | null,
 ) {
   const url = endpoint(`/api/media/${kind}/${encodeURIComponent(id)}`);
   if (!url) throw new Error("Backend URL is not configured.");
@@ -129,7 +132,7 @@ export async function uploadMedia(
       method: "PUT",
       headers: {
         Authorization: `Bearer ${identityToken}`,
-        "Content-Type": MEDIA_CONTENT_TYPE[kind],
+        "Content-Type": contentType || MEDIA_CONTENT_TYPE[kind],
         "Content-Length": String(blob.size),
       },
       body: blob,

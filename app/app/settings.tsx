@@ -26,6 +26,8 @@ import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useReminderManager } from "@/hooks/useReminderManager";
 import { appBlocker, type AppLockCondition } from "@/lib/appBlocker";
 import { cancelAllNotifications } from "@/lib/notifications";
+import { isAutoOrganizeEnabled, setAutoOrganizeEnabled } from "@/lib/journalSettings";
+import { isOnDeviceModelAvailable } from "@/lib/journalIntelligence";
 import { backupNow, getLastBackupAt, restoreNow } from "@/lib/cloudSync";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
@@ -185,6 +187,7 @@ export default function SettingsScreen() {
     appBlocker.getDailyLockTime(),
   );
   const [isUpdatingAppLockTime, setIsUpdatingAppLockTime] = useState(false);
+  const [autoOrganize, setAutoOrganize] = useState(isAutoOrganizeEnabled);
   const [lockCondition, setLockCondition] = useState(() =>
     appBlocker.getLockCondition(),
   );
@@ -402,6 +405,35 @@ export default function SettingsScreen() {
                 </Pressable>
               </>
             )}
+          </View>
+        </View>
+
+        <View style={s.section}>
+          <Text selectable style={s.sectionLabel}>
+            Journal
+          </Text>
+          <View style={s.listCard}>
+            <View style={s.listRow}>
+              <View style={{ flex: 1, paddingRight: 12 }}>
+                <Text selectable style={s.rowLabel}>
+                  Auto-organize messages
+                </Text>
+                <Text selectable style={{ fontSize: 12, color: C.textTertiary, marginTop: 2 }}>
+                  Tags messages and logs the habit they mention, on-device
+                  {isOnDeviceModelAvailable() ? " with Apple Intelligence" : ""}.
+                </Text>
+              </View>
+              <Switch
+                value={autoOrganize}
+                onValueChange={(val) => {
+                  setAutoOrganizeEnabled(val);
+                  setAutoOrganize(val);
+                }}
+                trackColor={reminderSwitchTrackColor}
+                thumbColor={reminderSwitchThumbColor}
+                ios_backgroundColor={C.cardBorder}
+              />
+            </View>
           </View>
         </View>
 
