@@ -77,7 +77,9 @@ export const journalEntries = sqliteTable('journal_entries', {
   // JSON-encoded arrays (nullable so older rows/backups need no backfill).
   // Shapes live in lib/journal.ts: tags string[], links string[],
   // attachments JournalAttachment[], checklist JournalChecklistItem[].
-  tags: text('tags'),
+  tags: text('tags'),                            // from inline #hashtags
+  autoTags: text('auto_tags'),                   // suggested on-device (lib/journalIntelligence.ts)
+  habitId: integer('habit_id'),                  // habit this message logs (marks it done)
   links: text('links'),
   attachments: text('attachments'),
   checklist: text('checklist'),

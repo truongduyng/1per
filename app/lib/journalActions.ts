@@ -2,9 +2,13 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
 import { deleteBackedUpJournalMedia, deleteBackedUpJournalPhoto } from './cloudSync';
-import { journalEntryOps } from './db';
+import { completionOps, habitOps, journalEntryOps } from './db';
+import { analyzeMessage } from './journalIntelligence';
+import { isAutoOrganizeEnabled } from './journalSettings';
 import {
   cancelJournalReminder,
+  draftFromEntry,
+  mergeTags,
   newLocalId,
   parseJournalEntry,
   syncJournalReminder,
@@ -105,11 +109,52 @@ export function discardAttachments(attachments: JournalAttachment[]) {
 
 // ── Saving / deleting ────────────────────────────────────────────────────────
 
+function dateFromKey(key: string): Date {
+  const [year, month, day] = key.split('-').map(Number);
+  return new Date(year, month - 1, day, 12);
+}
+
+/** Ticks the habit for the message's day (keeping any existing check-in photo/note). */
+async function logHabit(habitId: number, dateKey: string) {
+  try {
+    await completionOps.markDoneKeepingCheckIn(habitId, dateFromKey(dateKey));
+  } catch (error) {
+    console.warn('Failed to log habit from journal:', error);
+  }
+}
+
+/**
+ * Runs on-device analysis after a message is saved: adds topic tags and, when
+ * the user didn't pick a habit, links + ticks the habit the message reports.
+ * Runs in the background so sending stays instant.
+ */
+async function analyzeAndApply(entry: ParsedJournalEntry, options: { matchHabit: boolean }) {
+  if (!isAutoOrganizeEnabled()) return;
+  try {
+    const [habits, rows] = await Promise.all([habitOps.getAll(), journalEntryOps.getAll()]);
+    const knownTags = mergeTags(...rows.map((r) => parseJournalEntry(r).tags));
+    const result = await analyzeMessage({
+      text: entry.note,
+      habits,
+      knownTags,
+      attachments: entry.attachments,
+      matchHabit: options.matchHabit && !entry.habitId,
+    });
+    const habitId = result.habitId ?? undefined;
+    await journalEntryOps.setAnalysis(entry.id, { autoTags: result.tags, habitId });
+    if (habitId) await logHabit(habitId, entry.date);
+  } catch (error) {
+    console.warn('Journal analysis failed:', error);
+  }
+}
+
 export async function createJournalMessage(draft: JournalDraft): Promise<ParsedJournalEntry | null> {
   const [row] = await journalEntryOps.create(draft);
   if (!row) return null;
   const entry = parseJournalEntry(row);
+  if (entry.habitId) await logHabit(entry.habitId, entry.date);
   if (entry.remindAt) await syncJournalReminder(entry);
+  void analyzeAndApply(entry, { matchHabit: true });
   return entry;
 }
 
@@ -124,8 +169,25 @@ export async function updateJournalMessage(previous: ParsedJournalEntry, draft: 
     deleteJournalPhoto(previous.photoUri);
     deleteBackedUpJournalPhoto(previous.id);
   }
-  if (row) await syncJournalReminder(parseJournalEntry(row));
-  return row ? parseJournalEntry(row) : null;
+  if (!row) return null;
+  const entry = parseJournalEntry(row);
+  await syncJournalReminder(entry);
+  if (entry.habitId && entry.habitId !== previous.habitId) await logHabit(entry.habitId, entry.date);
+  // Re-suggest tags when the text changed; never re-link a habit the user may have removed.
+  if (entry.note !== previous.note) void analyzeAndApply(entry, { matchHabit: false });
+  return entry;
+}
+
+/** Unlinks the habit; optionally also unticks it for that day. */
+export async function unlinkJournalHabit(entry: ParsedJournalEntry, alsoUncheck: boolean) {
+  if (!entry.habitId) return;
+  await journalEntryOps.setHabit(entry.id, null);
+  if (alsoUncheck) await completionOps.markUndone(entry.habitId, dateFromKey(entry.date));
+}
+
+export async function linkJournalHabit(entry: ParsedJournalEntry, habitId: number) {
+  await journalEntryOps.setHabit(entry.id, habitId);
+  await logHabit(habitId, entry.date);
 }
 
 export async function deleteJournalMessage(entry: ParsedJournalEntry) {
@@ -140,15 +202,7 @@ export async function deleteJournalMessage(entry: ParsedJournalEntry) {
 }
 
 export async function setJournalReminder(entry: ParsedJournalEntry, remindAt: Date | null) {
-  const updated = await journalEntryOps.update(entry.id, {
-    note: entry.note,
-    photoUri: entry.photoUri,
-    tags: entry.tags,
-    links: entry.links,
-    attachments: entry.attachments,
-    checklist: entry.checklist,
-    remindAt,
-  });
+  const updated = await journalEntryOps.update(entry.id, { ...draftFromEntry(entry), remindAt });
   if (updated[0]) await syncJournalReminder(parseJournalEntry(updated[0]));
 }
 

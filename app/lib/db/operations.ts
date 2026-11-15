@@ -131,6 +131,20 @@ export const completionOps = {
     );
   },
 
+  /**
+   * Marks a habit done from a journal message, keeping any photo/note an
+   * existing check-in already has (markDone would clear them).
+   */
+  async markDoneKeepingCheckIn(habitId: number, date: Date) {
+    const existing = await this.getForDate(habitId, date);
+    if (existing?.status === 'done') return existing;
+    const [row] = await this.markDone(habitId, date, {
+      photoUri: existing?.photoUri,
+      note: existing?.note,
+    });
+    return row ?? null;
+  },
+
   async markUndone(habitId: number, date: Date) {
     const key = this.dateKey(date);
     return await withInitializedDb(() =>
@@ -375,6 +389,7 @@ export const dailyFocusOps = {
 function journalValues(draft: JournalDraft) {
   const note = draft.note.trim();
   return {
+    habitId: draft.habitId,
     note: note || null,
     photoUri: draft.photoUri?.trim() || null,
     // Inline #hashtags in the note count as tags so typing them is enough.
@@ -413,6 +428,25 @@ export const journalEntryOps = {
       db.select().from(journalEntries).where(eq(journalEntries.id, id)).limit(1)
     );
     return result[0] ?? null;
+  },
+
+  /** Writes on-device analysis results without touching the user's own fields. */
+  async setAnalysis(id: number, data: { autoTags: string[]; habitId?: number | null }) {
+    return await withInitializedDb(() =>
+      db.update(journalEntries)
+        .set({
+          autoTags: encodeJsonArray(data.autoTags),
+          ...(data.habitId !== undefined ? { habitId: data.habitId } : {}),
+        })
+        .where(eq(journalEntries.id, id))
+        .returning()
+    );
+  },
+
+  async setHabit(id: number, habitId: number | null) {
+    return await withInitializedDb(() =>
+      db.update(journalEntries).set({ habitId }).where(eq(journalEntries.id, id)).returning()
+    );
   },
 
   async setChecklist(id: number, checklist: JournalChecklistItem[]) {

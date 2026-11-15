@@ -28,7 +28,10 @@ export interface ParsedJournalEntry {
   date: string;
   note: string;
   photoUri: string | null;    // legacy single photo
+  /** Every tag: #hashtags written in the text plus on-device suggestions. */
   tags: string[];
+  autoTags: string[];
+  habitId: number | null;
   links: string[];
   attachments: JournalAttachment[];
   checklist: JournalChecklistItem[];
@@ -38,6 +41,7 @@ export interface ParsedJournalEntry {
 }
 
 export interface JournalDraft {
+  habitId: number | null;
   note: string;
   photoUri: string | null;
   tags: string[];
@@ -49,6 +53,7 @@ export interface JournalDraft {
 
 export function emptyJournalDraft(): JournalDraft {
   return {
+    habitId: null,
     note: '',
     photoUri: null,
     tags: [],
@@ -90,7 +95,9 @@ export function parseJournalEntry(row: JournalEntry): ParsedJournalEntry {
     date: row.date,
     note: row.note ?? '',
     photoUri: row.photoUri ?? null,
-    tags: parseArray(row.tags, isString),
+    tags: mergeTags(parseArray(row.tags, isString), parseArray(row.autoTags, isString)),
+    autoTags: parseArray(row.autoTags, isString),
+    habitId: row.habitId ?? null,
     links: parseArray(row.links, isString),
     attachments: parseArray(row.attachments, isAttachment),
     checklist: parseArray(row.checklist, isChecklistItem).map((item) => ({ ...item, done: !!item.done })),
@@ -102,9 +109,10 @@ export function parseJournalEntry(row: JournalEntry): ParsedJournalEntry {
 
 export function draftFromEntry(entry: ParsedJournalEntry): JournalDraft {
   return {
+    habitId: entry.habitId,
     note: entry.note,
     photoUri: entry.photoUri,
-    tags: [...entry.tags],
+    tags: [],
     links: [...entry.links],
     attachments: entry.attachments.map((a) => ({ ...a })),
     checklist: entry.checklist.map((c) => ({ ...c })),

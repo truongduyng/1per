@@ -58,6 +58,7 @@
     "expo-system-ui": "~57.0.4",
     "expo-video": "~57.0.4",
     "expo-web-browser": "~57.0.3",
+    "one-per-intelligence": "file:./modules/one-per-intelligence",
     "one-per-video-composer": "file:./modules/one-per-video-composer",
     "react": "19.2.3",
     "react-dom": "19.2.3",

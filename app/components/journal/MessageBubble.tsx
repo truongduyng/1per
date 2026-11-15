@@ -1,4 +1,5 @@
 import { useTheme } from "@/hooks/useTheme";
+import { resolveIoniconName } from "@/lib/iconNames";
 import {
   displayLink,
   formatFileSize,
@@ -21,6 +22,8 @@ interface Props {
   onOpenMedia: (media: ViewerMedia) => void;
   onTagPress: (tag: string) => void;
   now: number;
+  habit: { id: number; title: string; icon: string | null } | null;
+  onHabitPress: (habitId: number) => void;
 }
 
 function timeOf(date: Date) {
@@ -117,7 +120,7 @@ const tileStyles = StyleSheet.create({
   },
 });
 
-export function MessageBubble({ entry, highlighted, onLongPress, onToggleItem, onOpenMedia, onTagPress, now }: Props) {
+export function MessageBubble({ entry, highlighted, onLongPress, onToggleItem, onOpenMedia, onTagPress, now, habit, onHabitPress }: Props) {
   const C = useTheme();
   const s = makeStyles(C);
   const [singleRatio, setSingleRatio] = useState<number | null>(null);
@@ -144,6 +147,15 @@ export function MessageBubble({ entry, highlighted, onLongPress, onToggleItem, o
       style={[s.bubble, highlighted && s.highlighted]}
       accessibilityHint="Long press for options"
     >
+      {habit ? (
+        <Pressable style={s.habitChip} onPress={() => onHabitPress(habit.id)} hitSlop={4}>
+          <Ionicons name="checkmark-circle" size={14} color={C.accentText} />
+          <Ionicons name={resolveIoniconName(habit.icon, "star-outline")} size={13} color={C.accentText} />
+          <Text style={s.habitChipText} numberOfLines={1}>
+            {habit.title}
+          </Text>
+        </Pressable>
+      ) : null}
       {visual.length === 1 ? (
         <MediaTile
           attachment={visual[0]}
@@ -291,6 +303,18 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       marginBottom: 8,
     },
     highlighted: { borderColor: C.accent, borderWidth: 2 },
+    habitChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: 4,
+      maxWidth: "100%",
+      paddingHorizontal: 8,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: C.accentBg,
+    },
+    habitChipText: { flexShrink: 1, fontSize: 12, fontWeight: "700", color: C.accentText },
     note: { fontSize: 15, lineHeight: 21, color: C.textPrimary },
     inlineTag: { color: C.accentText, fontWeight: "600" },
     inlineLink: { color: C.accentText, textDecorationLine: "underline" },

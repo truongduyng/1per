@@ -210,6 +210,8 @@ export async function initializeDatabase() {
     );
     for (const [column, type] of [
       ['tags', 'TEXT'],
+      ['auto_tags', 'TEXT'],
+      ['habit_id', 'INTEGER'],
       ['links', 'TEXT'],
       ['attachments', 'TEXT'],
       ['checklist', 'TEXT'],

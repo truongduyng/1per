@@ -14,6 +14,7 @@ export type SettingsSnapshot = {
   habitReminder?: ReminderSetting;
   eveningReminder?: ReminderSetting;
   appLock?: { hour: number; minute: number; condition: string };
+  journalAutoOrganize?: boolean;
 };
 
 // Only preferences a user would expect to carry over to a new device -
@@ -49,6 +50,10 @@ export function exportSettingsSnapshot(): SettingsSnapshot {
       minute: storage.getNumber(STORAGE_KEYS.APP_LOCK_MINUTE) ?? 0,
       condition: storage.getString(STORAGE_KEYS.APP_LOCK_CONDITION) ?? "goal_and_habits",
     };
+  }
+
+  if (storage.contains(STORAGE_KEYS.JOURNAL_AUTO_ORGANIZE)) {
+    snapshot.journalAutoOrganize = storage.getBoolean(STORAGE_KEYS.JOURNAL_AUTO_ORGANIZE) ?? true;
   }
 
   return snapshot;
@@ -100,6 +105,10 @@ export async function importSettingsSnapshot(snapshot: SettingsSnapshot | undefi
     storage.set(STORAGE_KEYS.APP_LOCK_HOUR, snapshot.appLock.hour);
     storage.set(STORAGE_KEYS.APP_LOCK_MINUTE, snapshot.appLock.minute);
     storage.set(STORAGE_KEYS.APP_LOCK_CONDITION, snapshot.appLock.condition);
+  }
+
+  if (typeof snapshot.journalAutoOrganize === "boolean") {
+    storage.set(STORAGE_KEYS.JOURNAL_AUTO_ORGANIZE, snapshot.journalAutoOrganize);
   }
 
   if (snapshot.habitReminder) {

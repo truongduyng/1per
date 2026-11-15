@@ -1,4 +1,5 @@
 import { useTheme } from "@/hooks/useTheme";
+import { resolveIoniconName } from "@/lib/iconNames";
 import {
   ensureReminderPermission,
   extractLinks,
@@ -41,9 +42,12 @@ interface Props {
   onCancelEdit: () => void;
   onSent: (entry: ParsedJournalEntry | null) => void;
   knownTags: string[];
+  habits: ComposerHabit[];
 }
 
-export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
+export type ComposerHabit = { id: number; title: string; icon: string | null };
+
+export function Composer({ editing, onCancelEdit, onSent, knownTags, habits }: Props) {
   const C = useTheme();
   const s = makeStyles(C);
   const inputRef = useRef<TextInput>(null);
@@ -53,6 +57,7 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
   const [photoUri, setPhotoUri] = useState<string | null>(null); // legacy photo when editing
   const [checklist, setChecklist] = useState<JournalChecklistItem[] | null>(null);
   const [remindAt, setRemindAt] = useState<Date | null>(null);
+  const [habitId, setHabitId] = useState<number | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [sending, setSending] = useState(false);
   // Attachments picked in this composing session; removed from disk if never sent.
@@ -75,6 +80,7 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
     setPhotoUri(null);
     setChecklist(null);
     setRemindAt(null);
+    setHabitId(null);
     freshIds.current.clear();
   };
 
@@ -86,6 +92,7 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
     setPhotoUri(editing.photoUri);
     setChecklist(editing.checklist.length ? editing.checklist : null);
     setRemindAt(editing.remindAt);
+    setHabitId(editing.habitId);
     freshIds.current.clear();
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [editing]);
@@ -150,8 +157,35 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
     setReminderOpen(true);
   };
 
+  const pickHabit = () => {
+    if (!habits.length) {
+      Alert.alert("No habits yet", "Add habits on the Habits tab, then log them from here.");
+      return;
+    }
+    const labels = habits.map((h) => h.title);
+    const choose = (index: number) => {
+      const habit = habits[index];
+      if (habit) {
+        setHabitId(habit.id);
+        Haptics.selectionAsync();
+      }
+    };
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { title: "Log a habit", message: "Sending marks it done", options: [...labels, "Cancel"], cancelButtonIndex: labels.length },
+        choose,
+      );
+    } else {
+      Alert.alert("Log a habit", "Sending marks it done", [
+        ...labels.slice(0, 8).map((label, i) => ({ text: label, onPress: () => choose(i) })),
+        { text: "Cancel", style: "cancel" as const },
+      ]);
+    }
+  };
+
   const openMenu = () => {
     const options = [
+      { label: habitId ? "Change habit" : "Log habit", run: pickHabit },
       { label: "Camera", run: () => pick("camera") },
       { label: "Photos & Videos", run: () => pick("library") },
       { label: "File", run: () => pick("file") },
@@ -202,6 +236,7 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
     setSending(true);
     try {
       const draft = {
+        habitId,
         note: text,
         photoUri,
         tags: [], // derived from #hashtags in the text
@@ -225,7 +260,8 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
     }
   };
 
-  const hasPending = attachments.length > 0 || !!photoUri || !!remindAt;
+  const hasPending = attachments.length > 0 || !!photoUri || !!remindAt || !!habitId;
+  const pickedHabit = habits.find((h) => h.id === habitId);
 
   return (
     <View style={s.wrap}>
@@ -261,6 +297,21 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.pending}
         >
+          {habitId ? (
+            <Pressable style={s.pendingChip} onPress={pickHabit}>
+              <Ionicons
+                name={resolveIoniconName(pickedHabit?.icon ?? null, "checkmark-circle")}
+                size={14}
+                color={C.accentText}
+              />
+              <Text style={s.pendingChipText} numberOfLines={1}>
+                {pickedHabit?.title ?? "Habit"} ✓
+              </Text>
+              <Pressable onPress={() => setHabitId(null)} hitSlop={8} accessibilityLabel="Don't log habit">
+                <Ionicons name="close-circle" size={16} color={C.textTertiary} />
+              </Pressable>
+            </Pressable>
+          ) : null}
           {remindAt ? (
             <Pressable style={s.pendingChip} onPress={() => setReminderOpen(true)}>
               <Ionicons name="alarm" size={14} color={C.accentText} />

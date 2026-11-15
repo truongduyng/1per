@@ -107,10 +107,10 @@ export async function importSnapshot(snapshot: DataSnapshot) {
     }
     for (const row of snapshot.journal_entries ?? []) {
       await expoDb.runAsync(
-        `INSERT INTO journal_entries (id, date, note, photo_uri, tags, links, attachments, checklist, remind_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO journal_entries (id, date, note, photo_uri, tags, auto_tags, habit_id, links, attachments, checklist, remind_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         value(row, "id"), value(row, "date"), value(row, "note"), value(row, "photo_uri"),
-        value(row, "tags"), value(row, "links"), value(row, "attachments"),
+        value(row, "tags"), value(row, "auto_tags"), value(row, "habit_id"), value(row, "links"), value(row, "attachments"),
         value(row, "checklist"), value(row, "remind_at"), value(row, "created_at"),
         value(row, "updated_at"),
       );

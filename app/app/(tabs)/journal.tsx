@@ -17,7 +17,13 @@ import {
   type JournalFilter,
   type ParsedJournalEntry,
 } from "@/lib/journal";
-import { deleteJournalMessage, setJournalReminder, toggleChecklistItem } from "@/lib/journalActions";
+import {
+  deleteJournalMessage,
+  linkJournalHabit,
+  setJournalReminder,
+  toggleChecklistItem,
+  unlinkJournalHabit,
+} from "@/lib/journalActions";
 import { Ionicons } from "@expo/vector-icons";
 import { desc, isNotNull, or } from "drizzle-orm";
 import { useLiveQuery } from "drizzle-orm/expo-sqlite";
@@ -109,6 +115,7 @@ export default function JournalScreen() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<JournalFilter>("all");
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [habitFilter, setHabitFilter] = useState<number | null>(null);
   const [editing, setEditing] = useState<ParsedJournalEntry | null>(null);
   const [reminderFor, setReminderFor] = useState<ParsedJournalEntry | null>(null);
   const [viewer, setViewer] = useState<ViewerMedia>(null);
@@ -135,12 +142,32 @@ export default function JournalScreen() {
   }, [messages]);
   const knownTags = useMemo(() => tagCounts.map(([t]) => t), [tagCounts]);
 
+  // Active habits for the composer's "Log habit" picker.
+  const activeHabits = useMemo(
+    () =>
+      (allHabits ?? [])
+        .filter((h) => !h.archivedAt)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((h) => ({ id: h.id, title: h.title, icon: h.icon })),
+    [allHabits],
+  );
+
+  // Habits that have something in the journal (linked messages or check-in notes/photos).
+  const habitCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const m of messages) if (m.habitId) counts.set(m.habitId, (counts.get(m.habitId) ?? 0) + 1);
+    for (const c of habitEntries ?? []) counts.set(c.habitId, (counts.get(c.habitId) ?? 0) + 1);
+    return [...counts.entries()]
+      .filter(([id]) => habitById.has(id))
+      .sort((a, b) => b[1] - a[1]);
+  }, [messages, habitEntries, habitById]);
+
   const upcomingCount = useMemo(
     () => messages.filter((m) => m.remindAt && m.remindAt.getTime() > now).length,
     [messages, now],
   );
 
-  const isFiltering = query.trim().length > 0 || filter !== "all" || !!tagFilter;
+  const isFiltering = query.trim().length > 0 || filter !== "all" || !!tagFilter || !!habitFilter;
 
   const rows = useMemo(() => {
     const q = query.trim();
@@ -148,6 +175,7 @@ export default function JournalScreen() {
 
     for (const entry of messages) {
       if (tagFilter && !entry.tags.includes(tagFilter)) continue;
+      if (habitFilter && entry.habitId !== habitFilter) continue;
       if (!journalEntryMatchesFilter(entry, filter)) continue;
       if (q && !matchesQuery(journalEntryHaystack(entry), entry.tags, q)) continue;
       items.push({
@@ -161,10 +189,11 @@ export default function JournalScreen() {
 
     // Habit check-ins and focus videos only appear when no message-specific filter is active.
     const allowHabits = !tagFilter && (filter === "all" || filter === "photos");
-    const allowFocus = !tagFilter && (filter === "all" || filter === "videos");
+    const allowFocus = !tagFilter && !habitFilter && (filter === "all" || filter === "videos");
     if (allowHabits) {
       for (const entry of habitEntries ?? []) {
         if (filter === "photos" && !entry.photoUri) continue;
+        if (habitFilter && entry.habitId !== habitFilter) continue;
         const habit = habitById.get(entry.habitId);
         const hay = `${habit?.title ?? ""}\n${entry.note ?? ""}`.toLowerCase();
         if (q && !matchesQuery(hay, [], q)) continue;
@@ -215,7 +244,7 @@ export default function JournalScreen() {
       }
     }
     return out;
-  }, [messages, habitEntries, focusVideos, habitById, query, filter, tagFilter, now]);
+  }, [messages, habitEntries, focusVideos, habitById, query, filter, tagFilter, habitFilter, now]);
 
   const resultCount = rows.filter((r) => r.kind !== "day").length;
 
@@ -227,6 +256,7 @@ export default function JournalScreen() {
       setQuery("");
       setFilter("all");
       setTagFilter(null);
+      setHabitFilter(null);
       setHighlightId(id);
       router.setParams({ entry: undefined });
     }, 0);
@@ -263,6 +293,44 @@ export default function JournalScreen() {
         },
       },
     ];
+    const linked = entry.habitId ? habitById.get(entry.habitId) : undefined;
+    if (entry.habitId) {
+      actions.push({
+        label: `Unlink ${linked?.title ?? "habit"}`,
+        run: () =>
+          Alert.alert(
+            `Unlink ${linked?.title ?? "habit"}?`,
+            "Also uncheck the habit for that day?",
+            [
+              { text: "Cancel", style: "cancel" },
+              { text: "Keep checked", onPress: () => void unlinkJournalHabit(entry, false) },
+              { text: "Uncheck", style: "destructive", onPress: () => void unlinkJournalHabit(entry, true) },
+            ],
+          ),
+      });
+    } else if (activeHabits.length) {
+      actions.push({
+        label: "Log habit…",
+        run: () => {
+          const labels = activeHabits.map((h) => h.title);
+          const choose = (index: number) => {
+            const habit = activeHabits[index];
+            if (habit) void linkJournalHabit(entry, habit.id);
+          };
+          if (Platform.OS === "ios") {
+            ActionSheetIOS.showActionSheetWithOptions(
+              { title: "Log a habit", message: "Marks it done for that day", options: [...labels, "Cancel"], cancelButtonIndex: labels.length },
+              choose,
+            );
+          } else {
+            Alert.alert("Log a habit", undefined, [
+              ...labels.slice(0, 8).map((label, i) => ({ text: label, onPress: () => choose(i) })),
+              { text: "Cancel", style: "cancel" as const },
+            ]);
+          }
+        },
+      });
+    }
     if (shareText) {
       actions.push({ label: "Copy text", run: () => void Clipboard.setStringAsync(shareText) });
       actions.push({ label: "Share", run: () => void Share.share({ message: shareText }) });
@@ -303,7 +371,7 @@ export default function JournalScreen() {
         { text: "Cancel", style: "cancel" as const },
       ]);
     }
-  }, [editing]);
+  }, [editing, habitById, activeHabits]);
 
   const onToggleItem = useCallback((entry: ParsedJournalEntry, itemId: string) => {
     Haptics.selectionAsync();
@@ -314,10 +382,15 @@ export default function JournalScreen() {
     setTagFilter((current) => (current === tag ? null : tag));
   }, []);
 
+  const onHabitPress = useCallback((habitId: number) => {
+    setHabitFilter((current) => (current === habitId ? null : habitId));
+  }, []);
+
   const clearFilters = () => {
     setQuery("");
     setFilter("all");
     setTagFilter(null);
+    setHabitFilter(null);
   };
 
   const renderRow = ({ item }: { item: Row }) => {
@@ -338,6 +411,8 @@ export default function JournalScreen() {
           onOpenMedia={setViewer}
           onTagPress={onTagPress}
           now={now}
+          habit={item.entry.habitId ? habitById.get(item.entry.habitId) ?? null : null}
+          onHabitPress={onHabitPress}
         />
       );
     }
@@ -433,13 +508,35 @@ export default function JournalScreen() {
             );
           })}
         </ScrollView>
-        {tagCounts.length ? (
+        {tagCounts.length || habitCounts.length ? (
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={s.chips}
             keyboardShouldPersistTaps="handled"
           >
+            {habitCounts.map(([id, count]) => {
+              const habit = habitById.get(id)!;
+              const active = habitFilter === id;
+              return (
+                <Pressable
+                  key={`habit-${id}`}
+                  style={[s.tagChip, s.habitChip, active && s.chipActive]}
+                  onPress={() => onHabitPress(id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                >
+                  <Ionicons
+                    name={resolveIoniconName(habit.icon ?? null, "star-outline")}
+                    size={12}
+                    color={active ? C.textInverse : C.accentText}
+                  />
+                  <Text style={[s.tagChipText, active && s.chipTextActive]}>
+                    {habit.title} <Text style={s.tagCount}>{count}</Text>
+                  </Text>
+                </Pressable>
+              );
+            })}
             {tagCounts.map(([tag, count]) => {
               const active = tagFilter === tag;
               return (
@@ -510,6 +607,7 @@ export default function JournalScreen() {
               if (!isFiltering) listRef.current?.scrollToOffset({ offset: 0, animated: true });
             }}
             knownTags={knownTags}
+            habits={activeHabits}
           />
         </View>
       </KeyboardStickyView>
@@ -572,6 +670,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     },
     tagChipText: { fontSize: 12, fontWeight: "600", color: C.accentText },
     tagCount: { fontWeight: "400", opacity: 0.7 },
+    habitChip: { flexDirection: "row", alignItems: "center", gap: 5 },
     resultsRow: {
       flexDirection: "row",
       justifyContent: "space-between",
