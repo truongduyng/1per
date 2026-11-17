@@ -2,11 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { PAIN_SECTIONS } from "./data";
 import { ScreenShell } from "./shared";
-import { ORANGE, SOFT_ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export function PainScreen({
   selected,
@@ -39,7 +38,7 @@ export function PainScreen({
           <View key={section.focus} style={s.painSection}>
             <View style={s.painSectionHeader}>
               <View style={s.painSectionTitleWrap}>
-                <Ionicons name={section.icon} size={14} color={SOFT_ORANGE} />
+                <Ionicons name={section.icon} size={14} color={C.accentText} />
                 <Text style={s.painSectionTitle}>{section.label}</Text>
               </View>
             </View>
@@ -59,7 +58,7 @@ export function PainScreen({
                     <Ionicons
                       name={active ? "checkmark-circle" : "ellipse-outline"}
                       size={20}
-                      color={active ? ORANGE : palette.white45}
+                      color={active ? C.accentText : C.iconTertiary}
                     />
                   </Pressable>
                 );

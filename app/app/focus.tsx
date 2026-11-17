@@ -315,7 +315,7 @@ export default function FocusScreen() {
               <Ionicons
                 name={isCameraEnabled ? "videocam" : "videocam-off"}
                 size={22}
-                color={isRecording ? palette.white : isCameraEnabled ? palette.orange : C.iconSecondary}
+                color={isRecording ? palette.white : isCameraEnabled ? C.accent : C.iconSecondary}
               />
             </Pressable>
           ),
@@ -346,7 +346,7 @@ export default function FocusScreen() {
           <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
             <Aurora
               height={420}
-              intensity={isLight ? 0.5 : 0.8}
+              intensity={isLight ? 0.5 : 0.3}
               auroraColors={isLight ? [...AURORA_LIGHT_AURORA_COLORS] : undefined}
               skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
             />
@@ -371,7 +371,7 @@ export default function FocusScreen() {
                 cx={RING_SIZE / 2}
                 cy={RING_SIZE / 2}
                 r={RADIUS}
-                stroke={palette.orange}
+                stroke={C.accent}
                 strokeWidth={STROKE_WIDTH}
                 fill="none"
                 strokeLinecap="round"
@@ -403,7 +403,7 @@ export default function FocusScreen() {
                     : "play"
               }
               size={24}
-              color={palette.white}
+              color={C.accentForeground}
             />
           </Pressable>
           <Pressable
@@ -412,7 +412,7 @@ export default function FocusScreen() {
             accessibilityRole="button"
             accessibilityLabel="Finish focus session"
           >
-            <Ionicons name="checkmark" size={25} color={palette.white} />
+            <Ionicons name="checkmark" size={25} color={C.accentForeground} />
           </Pressable>
         </View>
       </SafeAreaView>
@@ -436,7 +436,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       justifyContent: "center",
     },
     cameraToggleRecording: { backgroundColor: "#D92D45" },
-    aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.72 },
+    aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.35 },
     auroraLight: { opacity: 0.55 },
     safeArea: {
       flex: 1,
@@ -495,7 +495,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       width: 64,
       height: 64,
       borderRadius: 999,
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -514,7 +514,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       borderRadius: 999,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
     },
     doneButtonDisabled: { opacity: 0.45 },
   });

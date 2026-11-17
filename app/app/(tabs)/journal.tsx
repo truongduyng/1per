@@ -2,13 +2,11 @@ import GradientBackground from "@/components/GradientBackground";
 import { Composer } from "@/components/journal/Composer";
 import { MediaViewer, type ViewerMedia } from "@/components/journal/MediaViewer";
 import { MessageBubble } from "@/components/journal/MessageBubble";
-import { ReminderSheet } from "@/components/journal/ReminderSheet";
 import { useNow } from "@/hooks/useNow";
 import { useTheme } from "@/hooks/useTheme";
 import { dailyFocus, db, habitCompletions, habits, journalEntries } from "@/lib/db";
 import { resolveIoniconName } from "@/lib/iconNames";
 import {
-  ensureReminderPermission,
   journalEntryHaystack,
   journalEntryMatchesFilter,
   matchesQuery,
@@ -19,7 +17,6 @@ import {
 } from "@/lib/journal";
 import {
   deleteJournalMessage,
-  linkJournalHabit,
   setJournalReminder,
   toggleChecklistItem,
   unlinkJournalHabit,
@@ -45,7 +42,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { KeyboardStickyView } from "react-native-keyboard-controller";
+import { KeyboardAvoidingView, useKeyboardState, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import Animated, { useAnimatedStyle } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type HabitRow = typeof habitCompletions.$inferSelect;
@@ -89,6 +87,15 @@ function formatDay(key: string): string {
 
 export default function JournalScreen() {
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardState((state) => state.isVisible);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const hideComposer = searchFocused && keyboardVisible;
+  const { progress: keyboardProgress } = useReanimatedKeyboardAnimation();
+  const composerInsetStyle = useAnimatedStyle(() => ({
+    // Native tabs include their bottom safe area here. The keyboard already
+    // occupies that space while open, so retaining it leaves a gap below input.
+    paddingBottom: insets.bottom * (1 - keyboardProgress.value),
+  }), [insets.bottom]);
   const C = useTheme();
   const s = makeStyles(C);
   const listRef = useRef<FlatList<Row>>(null);
@@ -117,7 +124,6 @@ export default function JournalScreen() {
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [habitFilter, setHabitFilter] = useState<number | null>(null);
   const [editing, setEditing] = useState<ParsedJournalEntry | null>(null);
-  const [reminderFor, setReminderFor] = useState<ParsedJournalEntry | null>(null);
   const [viewer, setViewer] = useState<ViewerMedia>(null);
   const [highlightId, setHighlightId] = useState<number | null>(null);
 
@@ -141,16 +147,6 @@ export default function JournalScreen() {
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [messages]);
   const knownTags = useMemo(() => tagCounts.map(([t]) => t), [tagCounts]);
-
-  // Active habits for the composer's "Log habit" picker.
-  const activeHabits = useMemo(
-    () =>
-      (allHabits ?? [])
-        .filter((h) => !h.archivedAt)
-        .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((h) => ({ id: h.id, title: h.title, icon: h.icon })),
-    [allHabits],
-  );
 
   // Habits that have something in the journal (linked messages or check-in notes/photos).
   const habitCounts = useMemo(() => {
@@ -281,18 +277,12 @@ export default function JournalScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const shareText = [entry.note, ...entry.links].filter(Boolean).join("\n");
     const actions: { label: string; destructive?: boolean; run: () => void }[] = [
-      { label: "Edit", run: () => setEditing(entry) },
-      {
-        label: entry.remindAt ? "Change reminder" : "Remind me",
-        run: async () => {
-          if (!(await ensureReminderPermission())) {
-            Alert.alert("Notifications are off", "Allow notifications for 1Per in Settings to get reminders.");
-            return;
-          }
-          setReminderFor(entry);
-        },
-      },
+      { label: "Edit", run: () => {
+        setSearchFocused(false);
+        setEditing(entry);
+      } },
     ];
+    if (entry.remindAt) actions.push({ label: "Cancel reminder", run: () => void setJournalReminder(entry, null) });
     const linked = entry.habitId ? habitById.get(entry.habitId) : undefined;
     if (entry.habitId) {
       actions.push({
@@ -307,28 +297,6 @@ export default function JournalScreen() {
               { text: "Uncheck", style: "destructive", onPress: () => void unlinkJournalHabit(entry, true) },
             ],
           ),
-      });
-    } else if (activeHabits.length) {
-      actions.push({
-        label: "Log habit…",
-        run: () => {
-          const labels = activeHabits.map((h) => h.title);
-          const choose = (index: number) => {
-            const habit = activeHabits[index];
-            if (habit) void linkJournalHabit(entry, habit.id);
-          };
-          if (Platform.OS === "ios") {
-            ActionSheetIOS.showActionSheetWithOptions(
-              { title: "Log a habit", message: "Marks it done for that day", options: [...labels, "Cancel"], cancelButtonIndex: labels.length },
-              choose,
-            );
-          } else {
-            Alert.alert("Log a habit", undefined, [
-              ...labels.slice(0, 8).map((label, i) => ({ text: label, onPress: () => choose(i) })),
-              { text: "Cancel", style: "cancel" as const },
-            ]);
-          }
-        },
       });
     }
     if (shareText) {
@@ -371,7 +339,7 @@ export default function JournalScreen() {
         { text: "Cancel", style: "cancel" as const },
       ]);
     }
-  }, [editing, habitById, activeHabits]);
+  }, [editing, habitById]);
 
   const onToggleItem = useCallback((entry: ParsedJournalEntry, itemId: string) => {
     Haptics.selectionAsync();
@@ -463,7 +431,7 @@ export default function JournalScreen() {
   };
 
   return (
-    <View style={s.container}>
+    <KeyboardAvoidingView style={s.container} behavior="padding" automaticOffset>
       <GradientBackground />
 
       <View style={[s.header, { paddingTop: insets.top + 12 }]}>
@@ -474,6 +442,8 @@ export default function JournalScreen() {
             style={s.searchInput}
             value={query}
             onChangeText={setQuery}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             placeholder="Search notes, links, files, #tags"
             placeholderTextColor={C.textQuaternary}
             returnKeyType="search"
@@ -578,7 +548,7 @@ export default function JournalScreen() {
           <Text style={s.emptyBody}>
             {isFiltering
               ? "Try another word, tag, or filter."
-              : "Jot down thoughts, save links, drop in photos, videos and files. Add #tags to find them later, turn notes into checklists, and set reminders."}
+              : "Write naturally to log a habit, make a checklist, or ask for a reminder. You can also save photos, links and files."}
           </Text>
         </View>
       ) : (
@@ -597,39 +567,29 @@ export default function JournalScreen() {
         />
       )}
 
-      <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-        <View style={{ paddingBottom: insets.bottom }}>
-          <Composer
-            editing={editing}
-            onCancelEdit={() => setEditing(null)}
-            onSent={() => {
-              setEditing(null);
-              if (!isFiltering) listRef.current?.scrollToOffset({ offset: 0, animated: true });
-            }}
-            knownTags={knownTags}
-            habits={activeHabits}
-          />
-        </View>
-      </KeyboardStickyView>
-
-      <ReminderSheet
-        visible={!!reminderFor}
-        current={reminderFor?.remindAt ?? null}
-        onClose={() => setReminderFor(null)}
-        onPick={(date) => {
-          if (reminderFor) void setJournalReminder(reminderFor, date);
-          setReminderFor(null);
-        }}
-      />
+      {/* Keep the composer in the same layout as the list so keyboard avoidance
+          reduces the message viewport instead of moving the input over it. */}
+      <Animated.View style={[composerInsetStyle, hideComposer && s.composerHidden]}>
+        <Composer
+          editing={editing}
+          onCancelEdit={() => setEditing(null)}
+          onSent={() => {
+            setEditing(null);
+            if (!isFiltering) listRef.current?.scrollToOffset({ offset: 0, animated: true });
+          }}
+          knownTags={knownTags}
+        />
+      </Animated.View>
 
       <MediaViewer media={viewer} onClose={() => setViewer(null)} />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 function makeStyles(C: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     container: { flex: 1 },
+    composerHidden: { display: "none" },
     header: { paddingHorizontal: 16, gap: 10, paddingBottom: 8 },
     title: { fontSize: 28, fontWeight: "700", color: C.textPrimary, paddingHorizontal: 4 },
     searchBox: {

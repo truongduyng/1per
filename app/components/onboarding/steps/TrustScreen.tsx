@@ -5,7 +5,7 @@ import { Image, Text, View } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { TRUST_AVATARS, TRUST_REVIEWS } from "./data";
 import { ScreenShell } from "./shared";
-import { ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export function TrustScreen({ onNext }: { onNext: () => void }) {
   const C = useTheme();
@@ -24,7 +24,7 @@ export function TrustScreen({ onNext }: { onNext: () => void }) {
         </View>
         <View style={s.starRow}>
           {[0, 1, 2, 3, 4].map((index) => (
-            <Ionicons key={index} name="star" size={14} color={ORANGE} />
+            <Ionicons key={index} name="star" size={14} color={C.accentText} />
           ))}
         </View>
         <Text style={s.ratingText}>4.9/5</Text>
@@ -55,7 +55,7 @@ export function TrustScreen({ onNext }: { onNext: () => void }) {
               </View>
               <View style={s.reviewStars}>
                 {[0, 1, 2, 3, 4].map((index) => (
-                  <Ionicons key={index} name="star" size={11} color={ORANGE} />
+                  <Ionicons key={index} name="star" size={11} color={C.accentText} />
                 ))}
               </View>
             </View>

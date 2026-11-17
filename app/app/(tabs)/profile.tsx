@@ -37,7 +37,6 @@ import {
 } from "@/lib/db";
 import { DAY_NAMES } from "@/lib/performance";
 import { getTodayInLocalTimezone } from "@/lib/timezone";
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import {
   deleteAvatarPhoto,
@@ -47,6 +46,13 @@ import {
 
 const WEEKDAY_LABELS = ["S", "M", "T", "W", "T", "F", "S"];
 const CONSISTENCY_GAP = 3;
+const CONSISTENCY_CELL = 14;
+const MONTH_SPACING = 16;
+const MONTH_WIDTH = CONSISTENCY_CELL * 7 + CONSISTENCY_GAP * 6;
+const MONTH_LABELS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
 const TREND_DAYS = 14;
 
 function formatDateKey(date: Date) {
@@ -105,6 +111,8 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const C = useTheme();
   const shareCardRef = useRef<ViewShotRef>(null);
+  const consistencyScrollRef = useRef<ScrollView>(null);
+  const consistencyViewportWidth = useRef(0);
   const today = useMemo(() => getTodayInLocalTimezone(), []);
 
   const { data: profileData } = useLiveQuery(
@@ -428,14 +436,37 @@ export default function ProfileScreen() {
     };
   }, [allCompletions, allFocusRows, allHabits, today]);
 
-  const consistencyColumns = useMemo(() => {
-    const columns: (typeof analytics.consistencyGrid)[] = [];
-    for (let i = 0; i < analytics.consistencyGrid.length; i += 7) {
-      columns.push(analytics.consistencyGrid.slice(i, i + 7));
-    }
-    return columns;
+  const consistencyMonths = useMemo(() => {
+    type Cell = (typeof analytics.consistencyGrid)[number] | null;
+    const year = today.getFullYear();
+    const byKey = new Map(
+      analytics.consistencyGrid.map((item) => [item.dateKey, item]),
+    );
+    return MONTH_LABELS.map((label, month) => {
+      const first = new Date(year, month, 1);
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const cells: Cell[] = Array.from({ length: first.getDay() }, () => null);
+      for (let d = 1; d <= daysInMonth; d++) {
+        cells.push(byKey.get(formatDateKey(new Date(year, month, d))) ?? null);
+      }
+      while (cells.length < 42) cells.push(null);
+      const rows: Cell[][] = [];
+      for (let i = 0; i < cells.length; i += 7) rows.push(cells.slice(i, i + 7));
+      return { label, rows };
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analytics.consistencyGrid]);
+  }, [analytics.consistencyGrid, today]);
+
+  const scrollConsistencyToToday = useCallback(() => {
+    const step = MONTH_WIDTH + MONTH_SPACING;
+    const x =
+      today.getMonth() * step -
+      (consistencyViewportWidth.current - MONTH_WIDTH) / 2;
+    consistencyScrollRef.current?.scrollTo({
+      x: Math.max(0, x),
+      animated: false,
+    });
+  }, [today]);
 
   const trendChart = useMemo(
     () =>
@@ -526,7 +557,7 @@ export default function ProfileScreen() {
                   <Ionicons
                     name="person-outline"
                     size={30}
-                    color={palette.orange}
+                    color={C.accent}
                   />
                 )}
                 <View style={s.avatarEditBadge}>
@@ -621,32 +652,47 @@ export default function ProfileScreen() {
               Consistency
             </Text>
 
-            <View style={s.gridWrap}>
-              {consistencyColumns.map((col, wi) => (
-                <View
-                  key={wi}
-                  style={[s.gridCol, wi > 0 && s.gridColGap]}
-                >
-                  {col.map((item, di) => (
-                    <View
-                      key={item.dateKey}
-                      style={[
-                        s.gridCell,
-                        di > 0 && s.gridCellGap,
-                        item.intensity === 0 && s.gridCellIdle,
-                        item.intensity > 0 &&
-                          item.intensity < 0.5 &&
-                          s.gridCellLow,
-                        item.intensity >= 0.5 &&
-                          item.intensity < 1 &&
-                          s.gridCellMid,
-                        item.intensity === 1 && s.gridCellHigh,
-                      ]}
-                    />
+            <ScrollView
+              ref={consistencyScrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              onLayout={(e) => {
+                consistencyViewportWidth.current = e.nativeEvent.layout.width;
+                scrollConsistencyToToday();
+              }}
+              onContentSizeChange={scrollConsistencyToToday}
+              contentContainerStyle={s.monthGrid}
+            >
+              {consistencyMonths.map((month) => (
+                <View key={month.label} style={s.monthBlock}>
+                  <Text style={s.monthLabel}>{month.label}</Text>
+                  {month.rows.map((row, ri) => (
+                    <View key={ri} style={s.monthRow}>
+                      {row.map((item, di) =>
+                        item ? (
+                          <View
+                            key={item.dateKey}
+                            style={[
+                              s.gridCell,
+                              item.intensity === 0 && s.gridCellIdle,
+                              item.intensity > 0 &&
+                                item.intensity < 0.5 &&
+                                s.gridCellLow,
+                              item.intensity >= 0.5 &&
+                                item.intensity < 1 &&
+                                s.gridCellMid,
+                              item.intensity === 1 && s.gridCellHigh,
+                            ]}
+                          />
+                        ) : (
+                          <View key={`empty-${di}`} style={s.gridCellEmpty} />
+                        ),
+                      )}
+                    </View>
                   ))}
                 </View>
               ))}
-            </View>
+            </ScrollView>
           </View>
         </View>
 
@@ -700,12 +746,12 @@ export default function ProfileScreen() {
                   >
                     <Stop
                       offset="0%"
-                      stopColor={palette.orange}
+                      stopColor={C.accent}
                       stopOpacity={0.34}
                     />
                     <Stop
                       offset="100%"
-                      stopColor={palette.orange}
+                      stopColor={C.accent}
                       stopOpacity={0.02}
                     />
                   </LinearGradient>
@@ -729,7 +775,7 @@ export default function ProfileScreen() {
                 <Path
                   d={trendChart.path}
                   fill="none"
-                  stroke={palette.orange}
+                  stroke={C.accent}
                   strokeWidth={4}
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -740,7 +786,7 @@ export default function ProfileScreen() {
                     cx={point.x}
                     cy={point.y}
                     r={index === trendChart.points.length - 1 ? 5 : 3.5}
-                    fill={palette.orange}
+                    fill={C.accent}
                     opacity={index === trendChart.points.length - 1 ? 1 : 0.75}
                   />
                 ))}
@@ -828,7 +874,7 @@ export default function ProfileScreen() {
                   <Ionicons
                     name="person-outline"
                     size={24}
-                    color={palette.orange}
+                    color={C.accent}
                   />
                 )}
               </View>
@@ -902,7 +948,7 @@ export default function ProfileScreen() {
               {draftAvatar ? (
                 <Image source={{ uri: draftAvatar }} style={s.editAvatarImage} />
               ) : (
-                <Ionicons name="person-outline" size={34} color={palette.orange} />
+                <Ionicons name="person-outline" size={34} color={C.accent} />
               )}
               <View style={s.avatarEditBadge}>
                 <Ionicons name="camera" size={13} color="#FFFFFF" />
@@ -915,7 +961,7 @@ export default function ProfileScreen() {
               placeholder="Your name"
               placeholderTextColor={C.textTertiary}
               style={s.editNameInput}
-              selectionColor={palette.orange}
+              selectionColor={C.accent}
               maxLength={32}
               returnKeyType="done"
               onSubmitEditing={() => Keyboard.dismiss()}
@@ -1006,7 +1052,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       borderRadius: 11,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderWidth: 2,
       borderColor: C.screenBg,
     },
@@ -1115,7 +1161,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       gap: 4,
     },
     shareTitle: {
-      color: palette.orange,
+      color: C.accent,
       fontSize: 28,
       lineHeight: 32,
       fontWeight: "900",
@@ -1161,26 +1207,34 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       padding: 18,
       gap: 16,
     },
-    gridWrap: {
+    monthGrid: {
       flexDirection: "row",
-      width: "100%",
+      gap: MONTH_SPACING,
     },
-    gridCol: {
-      flex: 1,
-      flexDirection: "column",
+    monthBlock: {
+      width: MONTH_WIDTH,
+      gap: CONSISTENCY_GAP,
     },
-    gridColGap: {
-      marginLeft: CONSISTENCY_GAP,
+    monthLabel: {
+      color: C.textSecondary,
+      fontSize: 11,
+      fontWeight: "600",
+      marginBottom: 4,
+    },
+    monthRow: {
+      flexDirection: "row",
+      gap: CONSISTENCY_GAP,
     },
     gridCell: {
-      width: "100%",
-      aspectRatio: 1,
-      borderRadius: 2,
+      width: CONSISTENCY_CELL,
+      height: CONSISTENCY_CELL,
+      borderRadius: 3,
       borderWidth: 1,
       borderColor: C.heatIdleBorder,
     },
-    gridCellGap: {
-      marginTop: CONSISTENCY_GAP,
+    gridCellEmpty: {
+      width: CONSISTENCY_CELL,
+      height: CONSISTENCY_CELL,
     },
     gridCellIdle: { backgroundColor: C.heatIdle },
     gridCellLow: { backgroundColor: C.heatLow },
@@ -1312,7 +1366,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       width: "100%",
       borderRadius: 14,
       borderCurve: "continuous",
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       minHeight: 10,
     },
     chartLabel: {
@@ -1395,7 +1449,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       fontWeight: "700",
     },
     editButtonPrimary: {
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
     },
     editButtonPrimaryText: {
       color: "#050505",

@@ -2,11 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import React, { useEffect, useMemo, useRef } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { GOAL_COPY_BY_PAIN, getGoalSuggestions } from "./data";
 import { ScreenShell } from "./shared";
-import { ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export function GoalInputScreen({
   value,
@@ -52,10 +51,10 @@ export function GoalInputScreen({
           value={value}
           onChangeText={onChange}
           placeholder="Type your answer..."
-          placeholderTextColor={palette.white55}
+          placeholderTextColor={C.textPlaceholder}
           multiline
           style={s.goalInput}
-          selectionColor={ORANGE}
+          selectionColor={C.accentText}
         />
         <View style={s.goalSuggestionList}>
           <Text style={s.goalSuggestionLabel}>{suggestionLabel}</Text>
@@ -73,7 +72,7 @@ export function GoalInputScreen({
                 <Ionicons
                   name={active ? "checkmark-circle" : "ellipse-outline"}
                   size={18}
-                  color={active ? ORANGE : palette.white55}
+                  color={active ? C.accentText : C.textPlaceholder}
                 />
               </Pressable>
             );

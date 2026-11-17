@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Alert, Image, Text, TouchableOpacity, View, StyleSheet } from "react-native";
 
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { signInAndSync } from "@/lib/cloudSync";
 
@@ -55,7 +54,7 @@ export function BackupStep({ onNext }: { onNext: () => void }) {
         <View style={s.benefitList}>
           <View style={s.benefitRow}>
             <View style={s.benefitIcon}>
-              <Ionicons name="cloud-done-outline" size={27} color={palette.orange} />
+              <Ionicons name="cloud-done-outline" size={27} color={C.accent} />
             </View>
             <View style={s.benefitCopy}>
               <Text style={s.benefitTitle}>Your data stays safe</Text>
@@ -64,7 +63,7 @@ export function BackupStep({ onNext }: { onNext: () => void }) {
           </View>
           <View style={s.benefitRow}>
             <View style={s.benefitIcon}>
-              <Ionicons name="phone-portrait-outline" size={27} color={palette.orange} />
+              <Ionicons name="phone-portrait-outline" size={27} color={C.accent} />
             </View>
             <View style={s.benefitCopy}>
               <Text style={s.benefitTitle}>Continue your journey</Text>
@@ -98,7 +97,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     iconWrap: { alignItems: "center" },
     heroImage: { width: 190, height: 190 },
     headline: { fontSize: 30, fontWeight: "800", color: C.textPrimary, lineHeight: 38 },
-    highlight: { color: palette.orange },
+    highlight: { color: C.accentText },
     body: { fontSize: 16, color: C.textSecondary, lineHeight: 24, marginTop: 8 },
     benefitList: { gap: 12 },
     benefitRow: {
@@ -114,11 +113,10 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     btn: {
       width: "100%", minHeight: 56, borderRadius: 8, backgroundColor: C.accent,
       alignItems: "center", justifyContent: "center", borderWidth: 1,
-      borderColor: "rgba(255,255,255,0.14)", shadowColor: C.accent,
-      shadowOpacity: 0.24, shadowRadius: 18, shadowOffset: { width: 0, height: 8 },
+      borderColor: C.accentBorder,
     },
     btnDisabled: { opacity: 0.6 },
-    btnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+    btnText: { color: C.accentForeground, fontSize: 16, fontWeight: "800" },
     skipText: { color: C.textSecondary, fontSize: 15, fontWeight: "600" },
   });
 }

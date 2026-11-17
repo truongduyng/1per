@@ -66,12 +66,12 @@ export default function ReferralSourceStep({
                 onPress={() => handleSelect(source.id)}
                 activeOpacity={0.78}
               >
-                <Ionicons name={source.icon} size={25} color={source.color} />
+                <Ionicons name={source.icon} size={25} color={source.id === "tiktok" || source.id === "other" ? C.iconPrimary : source.id === "friend" ? C.accentText : source.color} />
                 <Text style={s.sourceLabel}>{source.label}</Text>
                 <Ionicons
                   name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                   size={24}
-                  color={isSelected ? palette.orange : C.textQuaternary}
+                  color={isSelected ? C.accent : C.textQuaternary}
                 />
               </TouchableOpacity>
             );
@@ -157,7 +157,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       lineHeight: 36,
     },
     highlight: {
-      color: palette.orange,
+      color: C.accentText,
     },
     body: {
       color: C.textSecondary,
@@ -181,7 +181,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       gap: 14,
     },
     rowSelected: {
-      borderColor: palette.orange,
+      borderColor: C.accent,
       backgroundColor: C.accentBgSubtle,
     },
     sourceLabel: {
@@ -191,7 +191,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       fontWeight: "600",
     },
     btn: {
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderRadius: 14,
       paddingVertical: 18,
       alignItems: "center",
@@ -201,7 +201,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       opacity: 0.35,
     },
     btnText: {
-      color: "#fff",
+      color: C.accentForeground,
       fontSize: 16,
       fontWeight: "700",
     },

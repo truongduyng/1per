@@ -7,26 +7,10 @@ interface GradientBackgroundProps {
 
 export default function GradientBackground({ variant = "default" }: GradientBackgroundProps) {
   const C = useTheme();
-  const isOnboarding = variant === "onboarding";
-
-  if (!isOnboarding) {
-    return <View style={[StyleSheet.absoluteFill, { backgroundColor: C.screenBg }]} />;
-  }
-
   return (
-    <View style={styles.onboardingRoot} pointerEvents="none">
-      <View style={styles.vignette} />
-    </View>
+    <View
+      style={[StyleSheet.absoluteFill, { backgroundColor: variant === "onboarding" ? C.heroBg : C.screenBg }]}
+      pointerEvents="none"
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  onboardingRoot: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "#16171A",
-  },
-  vignette: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(0,0,0,0.08)",
-  },
-});

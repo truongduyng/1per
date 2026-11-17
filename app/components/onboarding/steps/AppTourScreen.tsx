@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 
 import { useTheme } from "@/hooks/useTheme";
 import { ScreenShell } from "./shared";
-import { ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 const APP_TOUR_ITEMS = [
   {
@@ -40,7 +40,7 @@ export function AppTourScreen({ onNext }: { onNext: () => void }) {
         {APP_TOUR_ITEMS.map((item) => (
           <View key={item.tab} style={s.tourCard}>
             <View style={s.tourIconWrap}>
-              <Ionicons name={item.icon} size={24} color={ORANGE} />
+              <Ionicons name={item.icon} size={24} color={C.accentText} />
             </View>
             <View style={s.flex}>
               <Text style={s.tourTitle}>{item.title}</Text>

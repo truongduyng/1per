@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Image, Text, TouchableOpacity, View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import {
   APP_BLOCKER_SELECTION_ID,
@@ -107,7 +106,7 @@ export default function ScreenTimeStep({ onNext }: ScreenTimeStepProps) {
           {BENEFITS.map((item) => (
             <View key={item.title} style={s.benefitRow}>
               <View style={s.benefitIcon}>
-                <Ionicons name={item.icon} size={28} color={palette.orange} />
+                <Ionicons name={item.icon} size={28} color={C.accent} />
               </View>
               <View style={s.benefitCopy}>
                 <Text style={s.benefitTitle}>{item.title}</Text>
@@ -119,7 +118,7 @@ export default function ScreenTimeStep({ onNext }: ScreenTimeStepProps) {
 
         {hasSelection && (
           <View style={s.statusRow}>
-            <Ionicons name="checkmark-circle" size={18} color={palette.orange} />
+            <Ionicons name="checkmark-circle" size={18} color={C.accent} />
             <Text style={s.statusText}>{status}</Text>
           </View>
         )}
@@ -198,7 +197,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       lineHeight: 38,
     },
     highlight: {
-      color: palette.orange,
+      color: C.accentText,
     },
     body: {
       fontSize: 16,
@@ -263,13 +262,13 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       alignItems: "center",
     },
     btn: {
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderRadius: 14,
       paddingVertical: 18,
       alignItems: "center",
       width: "100%",
     },
-    btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    btnText: { color: C.accentForeground, fontSize: 16, fontWeight: "700" },
     skipText: {
       color: C.textTertiary,
       fontSize: 14,

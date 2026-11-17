@@ -13,7 +13,6 @@ import {
 import Purchases, { type PurchasesPackage } from "react-native-purchases";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { trackOnboardingEvent } from "@/hooks/useOnboarding";
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 
 const PRIVACY_URL = "https://yikudo.xyz/1per/privacy";
@@ -178,7 +177,7 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
         {FEATURES.map((f) => (
           <View key={f.text} style={s.featureRow}>
             <View style={s.featureIcon}>
-              <Ionicons name={f.icon} size={18} color={palette.orange} />
+              <Ionicons name={f.icon} size={18} color={C.accent} />
             </View>
             <Text style={s.featureText}>{f.text}</Text>
           </View>
@@ -192,7 +191,7 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
       ) : null}
 
       {isLoading ? (
-        <ActivityIndicator color={palette.orange} style={s.loader} />
+        <ActivityIndicator color={C.accent} style={s.loader} />
       ) : packages.length === 0 ? (
         <View style={s.noOfferingBox}>
           <Text style={s.noOfferingText}>
@@ -241,7 +240,7 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
                     <Ionicons
                       name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                       size={20}
-                      color={isSelected ? palette.orange : C.textQuaternary}
+                      color={isSelected ? C.accent : C.textQuaternary}
                     />
                     <View style={s.pkgInfo}>
                       <View style={s.pkgTitleRow}>
@@ -313,7 +312,7 @@ export default function PaywallStep({ onComplete }: PaywallStepProps) {
         disabled={busy}
       >
         {restoring ? (
-          <ActivityIndicator color={palette.orange} size="small" />
+          <ActivityIndicator color={C.accent} size="small" />
         ) : (
           <Text style={s.restoreText}>Restore purchase</Text>
         )}
@@ -349,7 +348,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     },
     proBadge: {
       alignSelf: "flex-start",
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderRadius: 8,
       paddingHorizontal: 12,
       paddingVertical: 5,
@@ -376,7 +375,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     badgeText: {
       fontSize: 12,
       fontWeight: "700",
-      color: palette.orange,
+      color: C.accentText,
     },
     headline: {
       fontSize: 26,
@@ -425,7 +424,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       paddingVertical: 12,
     },
     pkgCardSelected: {
-      borderColor: palette.orange,
+      borderColor: C.accent,
       backgroundColor: C.accentBgSubtle,
     },
     pkgRow: {
@@ -450,18 +449,18 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       gap: 6,
     },
     pkgTitleSelected: { color: C.textPrimary },
-    pkgPriceSelected: { color: palette.orange },
+    pkgPriceSelected: { color: C.accentText },
     ctaBtn: {
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderRadius: 14,
       paddingVertical: 15,
       alignItems: "center",
     },
     ctaBtnDisabled: { opacity: 0.6 },
-    ctaBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    ctaBtnText: { color: C.accentForeground, fontSize: 16, fontWeight: "700" },
     bestValueBadge: {
       alignSelf: "flex-start",
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderRadius: 8,
       paddingHorizontal: 8,
       paddingVertical: 2,
@@ -499,7 +498,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     pkgTrial: {
       fontSize: 12,
       fontWeight: "700" as const,
-      color: palette.orange,
+      color: C.accentText,
     },
     pkgNoPayment: {
       fontSize: 12,

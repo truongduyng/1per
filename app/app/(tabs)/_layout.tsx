@@ -10,17 +10,29 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+  const C = Colors[isDark ? "dark" : "light"];
+  const navigationTheme = {
+    ...(isDark ? DarkTheme : DefaultTheme),
+    colors: {
+      ...(isDark ? DarkTheme.colors : DefaultTheme.colors),
+      background: C.screenBg,
+      card: C.sheetBg,
+      text: C.textPrimary,
+      border: C.divider,
+      primary: C.accent,
+    },
+  };
 
   return (
-    <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={navigationTheme}>
       <NativeTabs
         minimizeBehavior="onScrollDown"
-        tintColor={Colors.light.tint}
+        tintColor={C.tint}
         iconColor={{
           default: isDark ? Colors.dark.icon : Colors.light.icon,
-          selected: Colors.light.tint,
+          selected: C.tint,
         }}
-        backgroundColor={isDark ? "rgba(30, 30, 30, 0.5)" : "rgba(240, 240, 240, 0.8)"}
+        backgroundColor={isDark ? C.cardBg : "rgba(240, 240, 240, 0.8)"}
         blurEffect={
           isDark ? "systemChromeMaterialDark" : "systemChromeMaterial"
         }

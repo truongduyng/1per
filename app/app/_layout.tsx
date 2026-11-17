@@ -16,6 +16,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ThemePreferenceProvider } from "@/contexts/ThemeContext";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
 import * as Notifications from "expo-notifications";
+import { Colors } from "@/constants/theme";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -33,6 +34,19 @@ export default function RootLayout() {
 
 function AppLayout() {
   const colorScheme = useColorScheme();
+  const C = Colors[colorScheme ?? "dark"];
+  const baseNavigationTheme = colorScheme === "dark" ? DarkTheme : DefaultTheme;
+  const navigationTheme = {
+    ...baseNavigationTheme,
+    colors: {
+      ...baseNavigationTheme.colors,
+      background: C.screenBg,
+      card: C.sheetBg,
+      text: C.textPrimary,
+      border: C.divider,
+      primary: C.accent,
+    },
+  };
   const { isLoading, hasActiveSubscription } = useRevenueCat();
   const [isProfileReady, setIsProfileReady] = useState(false);
 
@@ -81,7 +95,7 @@ function AppLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <ThemeProvider
-          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+          value={navigationTheme}
         >
           <ProfileInitializer
             onInitialized={handleInitialized}

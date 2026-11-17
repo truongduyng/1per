@@ -5,7 +5,7 @@ import { Image, type ImageSourcePropType, Pressable, Text, View } from "react-na
 import { useTheme } from "@/hooks/useTheme";
 import { PAIN_FOCUS_META, PAIN_FOCUS_ORDER } from "./data";
 import { ScreenShell } from "./shared";
-import { ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 const FOCUS_AREAS = PAIN_FOCUS_ORDER.map((focus) => ({
   key: focus,
@@ -57,7 +57,7 @@ export function FocusAreaScreen({
               <Text style={[s.focusLabel, active && s.focusLabelActive]}>{label}</Text>
               {active && (
                 <View style={s.focusCheck}>
-                  <Ionicons name="checkmark-circle" size={16} color={ORANGE} />
+                  <Ionicons name="checkmark-circle" size={16} color={C.accentText} />
                 </View>
               )}
             </Pressable>

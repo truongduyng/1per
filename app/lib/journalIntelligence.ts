@@ -1,9 +1,10 @@
-import { OnePerIntelligence } from 'one-per-intelligence';
+import { OnePerIntelligence, type MessageIntentResult } from 'one-per-intelligence';
 import { extractHashtags, normalizeTag, type JournalAttachment } from './journal';
+import { checklistFromText, cleanChecklist, foldText, parseReminderLocal, reminderFromText, requestsReminder, type InferredChecklistItem } from './journalIntents';
 
-// On-device understanding for free-form journal messages: which habit (if any)
-// a message logs, and a few topic tags. Uses Apple's on-device Foundation
-// Model when available, otherwise a keyword matcher. Nothing leaves the phone.
+// On-device understanding for free-form messages: completed habits, checklist
+// items, reminder times and tags. Apple Foundation Models handles natural
+// language; conservative offline rules cover explicit requests when unavailable.
 
 export type AnalyzableHabit = { id: number; title: string; subtitle?: string | null };
 
@@ -11,10 +12,13 @@ export interface MessageAnalysis {
   habitId: number | null;
   tags: string[];
   source: 'apple' | 'keywords';
+  checklist: InferredChecklistItem[];
+  remindAt: Date | null;
+  reminderRequested: boolean;
 }
 
 const MAX_AUTO_TAGS = 3;
-const MODEL_TIMEOUT_MS = 6000;
+const MODEL_TIMEOUT_MS = 12000;
 
 // ── Text helpers ─────────────────────────────────────────────────────────────
 
@@ -40,7 +44,7 @@ function tokens(text: string): string[] {
 const HABIT_SYNONYMS: Record<string, string[]> = {
   run: ['ran', 'jog', 'jogged', 'jogging', 'km', 'k', '5k', '10k', 'marathon', 'miles', 'mile', 'sprint'],
   walk: ['walked', 'steps', 'stroll', 'hike', 'hiked', 'hiking'],
-  read: ['read', 'book', 'books', 'pages', 'page', 'chapter', 'novel', 'kindle'],
+  read: ['read', 'book', 'books', 'pages', 'page', 'chapter', 'novel', 'kindle', 'doc', 'sach', 'trang'],
   meditat: ['meditate', 'meditated', 'meditation', 'mindful', 'mindfulness', 'breathwork', 'breathing', 'headspace', 'calm'],
   workout: ['gym', 'lift', 'lifted', 'lifting', 'exercise', 'exercised', 'training', 'trained', 'pushups', 'squats', 'weights', 'hiit', 'crossfit'],
   exercis: ['gym', 'workout', 'lift', 'lifting', 'training', 'pushups', 'squats', 'weights', 'hiit'],
@@ -71,11 +75,12 @@ const HABIT_SYNONYMS: Record<string, string[]> = {
 
 // Plans, wishes and to-dos shouldn't tick a habit.
 const FUTURE_OR_INTENT =
-  /\b(tomorrow|tonight|later|next (?:week|time|month)|will|gonna|going to|plan(?:ning)? to|need to|have to|should|want to|wanna|todo|to-do|remind|skip(?:ped)?|didn'?t|did not|missed|no time)\b/i;
+  /\b(tomorrow|tonight|later|next (?:week|time|month)|will|gonna|going to|plan(?:ning)? to|need to|have to|should|want to|wanna|todo|to-do|remind|skip(?:ped)?|didn'?t|did not|not|never|haven'?t|missed|no time|yesterday|last (?:night|week)|hom qua|tuan truoc|mai|se|can|muon|dinh|chua|khong|sap|nhac)\b/i;
 
 // ── Keyword matcher ──────────────────────────────────────────────────────────
 
 function keywordHabit(text: string, habits: AnalyzableHabit[]): number | null {
+  text = foldText(text);
   if (FUTURE_OR_INTENT.test(text) || text.trim().endsWith('?')) return null;
   const words = tokens(text);
   if (!words.length) return null;
@@ -85,7 +90,7 @@ function keywordHabit(text: string, habits: AnalyzableHabit[]): number | null {
   let best: { id: number; score: number } | null = null;
   let runnerUp = 0;
   for (const habit of habits) {
-    const habitWords = tokens(`${habit.title} ${habit.subtitle ?? ''}`);
+    const habitWords = tokens(foldText(`${habit.title} ${habit.subtitle ?? ''}`));
     let score = 0;
     for (const hw of habitWords) {
       if (stems.has(stem(hw))) score += hw.length >= 4 ? 2 : 1;
@@ -185,7 +190,7 @@ function cleanTags(raw: string[], text: string, knownTags: string[]): string[] {
 }
 
 /**
- * Suggests the habit a message logs and up to three topic tags.
+ * Extracts actions and topic tags from the message, retaining its language.
  * `matchHabit: false` skips habit matching (e.g. the user picked one manually).
  */
 export async function analyzeMessage(input: {
@@ -194,28 +199,42 @@ export async function analyzeMessage(input: {
   knownTags: string[];
   attachments?: Pick<JournalAttachment, 'kind'>[];
   matchHabit?: boolean;
+  now?: Date;
 }): Promise<MessageAnalysis> {
   const text = input.text.trim();
   const matchHabit = input.matchHabit !== false;
   const attachments = input.attachments ?? [];
+  const now = input.now ?? new Date();
+  const fallbackActions = {
+    checklist: checklistFromText(text),
+    remindAt: reminderFromText(text, now),
+    reminderRequested: requestsReminder(text),
+  };
 
   if (text && isOnDeviceModelAvailable()) {
     try {
+      const habits = matchHabit ? input.habits.map((h) => ({ id: h.id, title: h.title, subtitle: h.subtitle ?? null })) : [];
+      const model = OnePerIntelligence!;
       const result = await withTimeout(
-        OnePerIntelligence!.analyzeAsync(
-          text,
-          matchHabit ? input.habits.map((h) => ({ id: h.id, title: h.title, subtitle: h.subtitle ?? null })) : [],
-          input.knownTags,
-        ),
+        model.interpretAsync
+          ? model.interpretAsync(text, habits, input.knownTags.slice(0, 40), now.toISOString(), Intl.DateTimeFormat().resolvedOptions().timeZone)
+          : model.analyzeAsync(text, habits, input.knownTags.slice(0, 40)),
         MODEL_TIMEOUT_MS,
       );
       const habitId =
         matchHabit && input.habits.some((h) => h.id === result.habitId)
           ? result.habitId
           : null;
-      return { habitId, tags: cleanTags(result.tags ?? [], text, input.knownTags), source: 'apple' };
+      const intent = result as Partial<MessageIntentResult>;
+      const actions = 'checklist' in result ? {
+        checklist: cleanChecklist(intent.checklist),
+        remindAt: intent.reminderRequested ? parseReminderLocal(intent.reminderLocal, now) : null,
+        reminderRequested: intent.reminderRequested === true,
+      } : fallbackActions;
+      return { habitId, tags: cleanTags(result.tags ?? [], text, input.knownTags), source: 'apple', ...actions };
     } catch (error) {
-      console.warn('On-device analysis failed, using keywords:', error);
+      // Offline fallback is a supported path, not a user-facing LogBox warning.
+      console.info('On-device analysis unavailable, using offline understanding:', error);
     }
   }
 
@@ -223,6 +242,7 @@ export async function analyzeMessage(input: {
     habitId: matchHabit ? keywordHabit(text, input.habits) : null,
     tags: cleanTags(keywordTags(text, attachments), text, input.knownTags),
     source: 'keywords',
+    ...fallbackActions,
   };
 }
 

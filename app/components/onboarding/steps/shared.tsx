@@ -11,7 +11,7 @@ import { KeyboardStickyView } from "react-native-keyboard-controller";
 import Svg, { Circle, Defs, Line, LinearGradient, Path, Stop } from "react-native-svg";
 
 import { useTheme } from "@/hooks/useTheme";
-import { ORANGE, SOFT_ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export function ScreenShell({
   children,
@@ -98,8 +98,8 @@ export function ChartCard() {
       <Svg width="100%" height={190} viewBox="0 0 300 190">
         <Defs>
           <LinearGradient id="momentumFill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor={ORANGE} stopOpacity="0.26" />
-            <Stop offset="1" stopColor={ORANGE} stopOpacity="0.02" />
+            <Stop offset="0" stopColor={C.accentText} stopOpacity="0.26" />
+            <Stop offset="1" stopColor={C.accentText} stopOpacity="0.02" />
           </LinearGradient>
         </Defs>
         {[54, 88, 122, 156].map((y) => (
@@ -109,7 +109,7 @@ export function ChartCard() {
             x2="276"
             y1={y}
             y2={y}
-            stroke="rgba(255,255,255,0.045)"
+            stroke={C.divider}
           />
         ))}
         {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
@@ -119,7 +119,7 @@ export function ChartCard() {
             x2={30 + i * 35}
             y1="24"
             y2="160"
-            stroke="rgba(255,255,255,0.035)"
+            stroke={C.divider}
           />
         ))}
         {points.map((point) => (
@@ -137,7 +137,7 @@ export function ChartCard() {
         <Path
           d={curvePath}
           fill="none"
-          stroke={ORANGE}
+          stroke={C.accentText}
           strokeWidth="3.5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -148,8 +148,8 @@ export function ChartCard() {
             cx={point.x}
             cy={point.y}
             r={index === points.length - 1 ? 6 : 4.3}
-            fill={index === points.length - 1 ? ORANGE : SOFT_ORANGE}
-            stroke="rgba(255,255,255,0.82)"
+            fill={index === points.length - 1 ? C.accentText : C.accentText}
+            stroke={C.cardBg}
             strokeWidth={index === points.length - 1 ? 1.4 : 0.8}
           />
         ))}

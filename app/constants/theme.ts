@@ -46,7 +46,7 @@ export const palette = {
 } as const;
 
 const tintColorLight = palette.orange;
-const tintColorDark = palette.orange;
+const tintColorDark = '#E7A06A';
 
 export const Colors = {
   light: {
@@ -77,6 +77,7 @@ export const Colors = {
     textQuaternary: 'rgba(15,23,42,0.44)',
     textPlaceholder: 'rgba(15,23,42,0.42)',
     textInverse: '#FFFFFF',
+    accentForeground: '#271A10',
 
     // interactive
     iconPrimary: '#0A0A0A',
@@ -100,53 +101,54 @@ export const Colors = {
   },
   dark: {
     // nav / tab bar
-    text: '#F2F3F4',
-    background: '#1E1F22',
+    text: '#E6E8EB',
+    background: '#181B20',
     tint: tintColorDark,
-    icon: '#B4BAC0',
-    tabIconDefault: '#B4BAC0',
+    icon: '#BBC2CC',
+    tabIconDefault: '#BBC2CC',
     tabIconSelected: tintColorDark,
 
     // semantic surfaces
-    // Lifted off near-black so cards and text separate clearly from the page.
-    screenBg: '#1E1F22',
-    heroBg: '#1E1F22',
-    cardBg: 'rgba(255,255,255,0.09)',
-    cardBorder: 'rgba(255,255,255,0.18)',
-    sheetBg: '#26272B',
-    sheetHandle: 'rgba(255,255,255,0.32)',
-    inputBg: 'rgba(255,255,255,0.10)',
-    inputBorder: 'rgba(255,255,255,0.26)',
-    divider: 'rgba(255,255,255,0.16)',
-    overlayBg: 'rgba(0,0,0,0.55)',
+    // Opaque surfaces keep nested cards from becoming progressively brighter.
+    screenBg: '#181B20',
+    heroBg: '#181B20',
+    cardBg: '#22262D',
+    cardBorder: '#414853',
+    sheetBg: '#242930',
+    sheetHandle: '#717B88',
+    inputBg: '#2A3039',
+    inputBorder: '#515C6B',
+    divider: '#3A424D',
+    overlayBg: 'rgba(0,0,0,0.65)',
 
-    // text - each step stays ≥ 4.5:1 against cardBg on screenBg (WCAG AA)
-    textPrimary: '#F5F5F5',
-    textSecondary: 'rgba(255,255,255,0.80)',
-    textTertiary: 'rgba(255,255,255,0.68)',
-    textQuaternary: 'rgba(255,255,255,0.58)',
-    textPlaceholder: 'rgba(255,255,255,0.52)',
-    textInverse: '#0A0A0A',
+    // Solid, softened text colors stay readable on every semantic surface.
+    textPrimary: '#E6E8EB',
+    textSecondary: '#C2C8D0',
+    textTertiary: '#ADB5C0',
+    textQuaternary: '#A3ADBA',
+    textPlaceholder: '#A3ADBA',
+    textInverse: '#21180F',
+    accentForeground: '#21180F',
 
     // interactive
-    iconPrimary: '#F5F5F5',
-    iconSecondary: 'rgba(255,255,255,0.80)',
-    iconTertiary: 'rgba(255,255,255,0.60)',
+    iconPrimary: '#E6E8EB',
+    iconSecondary: '#C2C8D0',
+    iconTertiary: '#ADB5C0',
 
     // accent
-    accent: palette.orange,
-    accentText: palette.orange,
-    accentBg: palette.orange15,
-    accentBorder: 'rgba(251,146,60,0.45)',
-    accentBgSubtle: palette.orange10,
-    accentBorderSubtle: palette.orange35,
+    accent: tintColorDark,
+    accentText: '#EDAF7F',
+    accentBg: '#3B3029',
+    accentBorder: '#95704F',
+    accentBgSubtle: '#2D2825',
+    accentBorderSubtle: '#64503F',
 
     // heatmap
-    heatIdle: 'rgba(255,255,255,0.10)',
-    heatIdleBorder: 'rgba(255,255,255,0.16)',
-    heatLow: 'rgba(240,136,60,0.28)',
-    heatMid: 'rgba(240,136,60,0.55)',
-    heatHigh: palette.orange,
+    heatIdle: '#2A3039',
+    heatIdleBorder: '#414853',
+    heatLow: '#69503D',
+    heatMid: '#AD7950',
+    heatHigh: tintColorDark,
   },
 };
 

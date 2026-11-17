@@ -2,11 +2,10 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { PRESET_CHALLENGES } from "@/lib/presetChallenges";
 import { ScreenShell } from "./shared";
-import { ORANGE, SOFT_ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 const RECOMMENDATIONS_BY_FOCUS: Record<string, string[]> = {
   health: ["30-day-reset", "75-soft"],
@@ -80,7 +79,7 @@ export function ChallengeSuggestionScreen({
                   <Ionicons
                     name={preset.icon}
                     size={22}
-                    color={active ? ORANGE : palette.white70}
+                    color={active ? C.accentText : C.iconSecondary}
                   />
                 </View>
                 <View style={s.flex}>
@@ -91,25 +90,25 @@ export function ChallengeSuggestionScreen({
                 <Ionicons
                   name={active ? "checkmark-circle" : "ellipse-outline"}
                   size={22}
-                  color={active ? ORANGE : palette.white45}
+                  color={active ? C.accentText : C.iconTertiary}
                 />
               </View>
 
               <View style={s.challengeMetaRow}>
                 <View style={s.challengeMetaItem}>
-                  <Ionicons name="calendar-outline" size={13} color={palette.white75} />
+                  <Ionicons name="calendar-outline" size={13} color={C.iconSecondary} />
                   <Text style={s.challengeMetaText}>{preset.durationDays} days</Text>
                 </View>
                 <View style={s.challengeMetaDot} />
                 <View style={s.challengeMetaItem}>
-                  <Ionicons name="repeat-outline" size={13} color={palette.white75} />
+                  <Ionicons name="repeat-outline" size={13} color={C.iconSecondary} />
                   <Text style={s.challengeMetaText}>{preset.rules.length} daily rules</Text>
                 </View>
               </View>
 
               {index === 0 && (
                 <View style={s.challengeWhyCard}>
-                  <Ionicons name="sparkles" size={15} color={SOFT_ORANGE} />
+                  <Ionicons name="sparkles" size={15} color={C.accentText} />
                   <View style={s.flex}>
                     <Text style={s.challengeWhyLabel}>WHY IT FITS YOU</Text>
                     <Text style={s.challengeWhyText}>{recommendationReason}</Text>
@@ -123,7 +122,7 @@ export function ChallengeSuggestionScreen({
                   {preset.rules.map((rule) => (
                     <View key={rule.title} style={s.challengeRuleRow}>
                       <View style={s.challengeRuleIcon}>
-                        <Ionicons name={rule.icon} size={14} color={palette.white70} />
+                        <Ionicons name={rule.icon} size={14} color={C.iconSecondary} />
                       </View>
                       <View style={s.flex}>
                         <Text style={s.challengeRuleTitle}>{rule.title}</Text>
@@ -141,7 +140,7 @@ export function ChallengeSuggestionScreen({
       </View>
 
       <View style={s.challengeStartNote}>
-        <Ionicons name="information-circle-outline" size={16} color={palette.white75} />
+        <Ionicons name="information-circle-outline" size={16} color={C.iconSecondary} />
         <Text style={s.challengeStartNoteText}>
           If selected, these habits will be added when you finish setup. You can end the challenge
           anytime.

@@ -58,8 +58,8 @@ export type AuroraProps = {
   waveDirection?: [number, number];
 };
 
-const DEFAULT_AURORA_COLORS = ["#F97316", "#FB923C", "#FCD34D"] as const;
-const DEFAULT_SKY_COLORS = ["#1A1A1A", "#2A1B12"] as const;
+const DEFAULT_AURORA_COLORS = ["#77513A", "#87674F", "#6D6352"] as const;
+const DEFAULT_SKY_COLORS = ["#181B20", "#22262D"] as const;
 
 // The default colors assume a dark backdrop. Over a light screen background
 // the dark navy sky reads as a muddy smear, so light mode gets its own pastel

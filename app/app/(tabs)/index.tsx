@@ -523,7 +523,7 @@ export default function HomeScreen() {
 
           <View style={s.header}>
             <View style={s.greetingRow}>
-              <Ionicons name="sunny" size={26} color={palette.orange} />
+              <Ionicons name="sunny" size={26} color={C.accent} />
               <Text style={s.greeting}>
                 {getGreeting()}, {firstName}
               </Text>
@@ -592,7 +592,7 @@ export default function HomeScreen() {
                     <Ionicons
                       name={isGoalComplete ? "checkmark" : "checkmark-outline"}
                       size={24}
-                      color={isGoalComplete ? palette.white : palette.orange}
+                      color={isGoalComplete ? C.accentForeground : C.accent}
                     />
                   </View>
                 </View>
@@ -629,7 +629,7 @@ export default function HomeScreen() {
               <Ionicons
                 name={editingGoal ? "save-outline" : "play"}
                 size={16}
-                color={palette.white}
+                color={C.accentForeground}
               />
               <Text style={s.focusButtonText}>
                 {editingGoal ? "Save" : "Start Focus"}
@@ -695,7 +695,7 @@ export default function HomeScreen() {
                 <Ionicons
                   name="chevron-forward"
                   size={18}
-                  color={palette.white}
+                  color={C.accentForeground}
                 />
               </View>
             </View>
@@ -710,7 +710,7 @@ export default function HomeScreen() {
                 <Ionicons
                   name={appLockUnlocked ? "lock-open" : "lock-closed"}
                   size={22}
-                  color={appLockUnlocked ? palette.white : palette.orangeStrong}
+                  color={appLockUnlocked ? C.accentForeground : C.accent}
                 />
               </View>
               <View style={s.lockHeaderText}>
@@ -737,7 +737,7 @@ export default function HomeScreen() {
                         <Ionicons
                           name="checkmark"
                           size={13}
-                          color={palette.white}
+                          color={C.accentForeground}
                         />
                       )}
                     </View>
@@ -766,7 +766,7 @@ export default function HomeScreen() {
               <Ionicons
                 name="options-outline"
                 size={16}
-                color={palette.white}
+                color={C.accentForeground}
               />
               <Text style={s.lockConfigureText}>
                 {hasBlockedAppSelection
@@ -878,7 +878,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       marginBottom: 10,
     },
     goalCard: {
-      backgroundColor: "rgba(255,255,255,0.2)",
+      backgroundColor: C.cardBg,
       borderRadius: 16,
       borderWidth: 1,
       borderColor: C.cardBorder,
@@ -933,8 +933,8 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       borderRadius: 32,
       borderWidth: 5,
       borderColor: C.accentBorderSubtle,
-      borderTopColor: palette.orange,
-      borderRightColor: palette.orange,
+      borderTopColor: C.accent,
+      borderRightColor: C.accent,
       alignItems: "center",
       justifyContent: "center",
     },
@@ -950,7 +950,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       justifyContent: "center",
     },
     ringInnerDone: {
-      backgroundColor: palette.orangeStrong,
+      backgroundColor: C.accent,
     },
     goalConfettiLayer: {
       position: "absolute",
@@ -969,23 +969,23 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     focusButton: {
       height: 46,
       borderRadius: 12,
-      backgroundColor: "#FF6B22",
+      backgroundColor: C.accent,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
       marginTop: 20,
-      shadowColor: "#FF6B22",
+      shadowColor: C.accent,
       shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.18,
+      shadowOpacity: 0,
       shadowRadius: 10,
       elevation: 3,
     },
     focusButtonDisabled: {
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
     },
     focusButtonText: {
-      color: palette.white,
+      color: C.accentForeground,
       fontSize: 16,
       fontWeight: "600",
     },
@@ -1016,7 +1016,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       justifyContent: "center",
     },
     lockIconUnlocked: {
-      backgroundColor: palette.orangeStrong,
+      backgroundColor: C.accent,
     },
     lockHeaderText: {
       flex: 1,
@@ -1085,8 +1085,8 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       justifyContent: "center",
     },
     lockCheckDone: {
-      backgroundColor: palette.orangeStrong,
-      borderColor: palette.orangeStrong,
+      backgroundColor: C.accent,
+      borderColor: C.accent,
     },
     lockChecklistText: {
       flex: 1,
@@ -1107,14 +1107,14 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     lockConfigureButton: {
       height: 42,
       borderRadius: 12,
-      backgroundColor: palette.orangeStrong,
+      backgroundColor: C.accent,
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 8,
     },
     lockConfigureText: {
-      color: palette.white,
+      color: C.accentForeground,
       fontSize: 14,
       fontWeight: "700",
     },
@@ -1178,7 +1178,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       marginBottom: 12,
     },
     resetBadgeText: {
-      color: palette.orange,
+      color: C.accent,
       fontSize: 11,
       fontWeight: "800",
       letterSpacing: 1,
@@ -1203,7 +1203,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       width: 38,
       height: 38,
       borderRadius: 19,
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       alignItems: "center",
       justifyContent: "center",
     },

@@ -5,7 +5,7 @@ import { Text, View } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { DEFAULT_HARM, PAIN_HARM } from "./data";
 import { ScreenShell } from "./shared";
-import { SOFT_ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export function PainAmplifyScreen({
   painPoints,
@@ -36,7 +36,7 @@ export function PainAmplifyScreen({
         {items.map(({ pain, harm, cost }) => (
           <View key={pain} style={s.amplifyCard}>
             <View style={s.amplifyPainRow}>
-              <Ionicons name="alert-circle" size={14} color={SOFT_ORANGE} />
+              <Ionicons name="alert-circle" size={14} color={C.accentText} />
               <Text style={s.amplifyPainText}>{pain}</Text>
             </View>
             <Text style={s.amplifyHarm}>{harm}</Text>

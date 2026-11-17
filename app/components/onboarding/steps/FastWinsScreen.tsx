@@ -5,7 +5,7 @@ import { Text, View } from "react-native";
 import { useTheme } from "@/hooks/useTheme";
 import { FAST_WINS } from "./data";
 import { ScreenShell } from "./shared";
-import { SOFT_ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export function FastWinsScreen({ onNext }: { onNext: () => void }) {
   const C = useTheme();
@@ -20,7 +20,7 @@ export function FastWinsScreen({ onNext }: { onNext: () => void }) {
         {FAST_WINS.map((win) => (
           <View key={win.title} style={s.timelineCard}>
             <View style={s.timelineIcon}>
-              <Ionicons name={win.icon} size={24} color={SOFT_ORANGE} />
+              <Ionicons name={win.icon} size={24} color={C.accentText} />
             </View>
             <View style={s.flex}>
               <Text style={s.cardTitle}>{win.title}</Text>

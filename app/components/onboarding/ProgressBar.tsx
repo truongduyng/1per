@@ -1,6 +1,5 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 
 interface ProgressBarProps {
@@ -21,7 +20,7 @@ export default function ProgressBar({ step, total, compact = false }: ProgressBa
             style={[
               styles.segment,
               { flex: 1 },
-              filled ? styles.filled : { backgroundColor: C.cardBorder },
+              { backgroundColor: filled ? C.accent : C.cardBorder },
               i < total - 1 && styles.gap,
             ]}
           />
@@ -46,9 +45,6 @@ const styles = StyleSheet.create({
   segment: {
     height: 3,
     borderRadius: 2,
-  },
-  filled: {
-    backgroundColor: palette.orange,
   },
   gap: {
     marginRight: 4,

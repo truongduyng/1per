@@ -29,7 +29,7 @@ import ScreenTimeStep from "@/components/onboarding/ScreenTimeStep";
 import PaywallStep from "@/components/onboarding/PaywallStep";
 import ProgressBar from "@/components/onboarding/ProgressBar";
 import ReferralSourceStep from "@/components/onboarding/ReferralSourceStep";
-import { palette } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 import {
   STEPS,
   TOTAL,
@@ -38,7 +38,8 @@ import {
 } from "@/hooks/useOnboarding";
 
 export default function OnboardingScreen() {
-  const s = makeStyles();
+  const C = useTheme();
+  const s = makeStyles(C);
   const {
     currentStep,
     fadeAnim,
@@ -188,8 +189,8 @@ export default function OnboardingScreen() {
       <SafeAreaView style={s.safeArea}>
         <View style={s.progressRow}>
           {showBack ? (
-            <TouchableOpacity onPress={goBack} hitSlop={12} style={s.backBtn}>
-              <Ionicons name="chevron-back" size={22} color={palette.white70} />
+            <TouchableOpacity onPress={goBack} hitSlop={12} style={s.backBtn} accessibilityRole="button" accessibilityLabel="Go back">
+              <Ionicons name="chevron-back" size={22} color={C.iconSecondary} />
             </TouchableOpacity>
           ) : (
             <View style={s.backBtn} />
@@ -207,11 +208,11 @@ export default function OnboardingScreen() {
   );
 }
 
-function makeStyles() {
+function makeStyles(C: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: "#16171A",
+      backgroundColor: C.screenBg,
     },
     safeArea: {
       flex: 1,

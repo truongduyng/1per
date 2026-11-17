@@ -3,11 +3,10 @@ import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import { Alert, Image, Keyboard, Pressable, Text, TextInput, View } from "react-native";
 
-import { palette } from "@/constants/theme";
 import { isAvatarPhotoUri, persistAvatarPhoto } from "@/lib/avatarPhoto";
 import { useTheme } from "@/hooks/useTheme";
 import { ScreenShell } from "./shared";
-import { ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export function IdentityScreen({
   name,
@@ -80,10 +79,10 @@ export function IdentityScreen({
           {isAvatarPhotoUri(avatar) ? (
             <Image source={{ uri: avatar }} style={s.avatarPickerImage} />
           ) : (
-            <Ionicons name="person-outline" size={36} color={palette.white55} />
+            <Ionicons name="person-outline" size={36} color={C.textPlaceholder} />
           )}
           <View style={s.avatarPickerBadge}>
-            <Ionicons name="camera" size={14} color="#FFFFFF" />
+            <Ionicons name="camera" size={14} color={C.accentForeground} />
           </View>
         </Pressable>
         <Text style={s.avatarPickerLabel}>
@@ -97,9 +96,9 @@ export function IdentityScreen({
           value={name}
           onChangeText={onNameChange}
           placeholder="What should we call you?"
-          placeholderTextColor={palette.white55}
+          placeholderTextColor={C.textPlaceholder}
           style={s.nameInput}
-          selectionColor={ORANGE}
+          selectionColor={C.accentText}
           maxLength={32}
           returnKeyType="done"
           onSubmitEditing={() => Keyboard.dismiss()}

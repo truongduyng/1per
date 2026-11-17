@@ -1,6 +1,5 @@
 import GradientBackground from "@/components/GradientBackground";
 import Aurora, { AURORA_LIGHT_AURORA_COLORS, AURORA_LIGHT_SKY_COLORS } from "@/components/Aurora";
-import { palette } from "@/constants/theme";
 import { usePreventScreenSleep } from "@/hooks/usePreventScreenSleep";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/useTheme";
@@ -200,7 +199,7 @@ export default function EveningResetScreen() {
       <View style={[s.aurora, isLight && s.auroraLight]} pointerEvents="none">
         <Aurora
           height={390}
-          intensity={isLight ? 0.45 : 0.7}
+          intensity={isLight ? 0.45 : 0.3}
           auroraColors={isLight ? [...AURORA_LIGHT_AURORA_COLORS] : undefined}
           skyColors={isLight ? [...AURORA_LIGHT_SKY_COLORS] : undefined}
         />
@@ -241,7 +240,7 @@ export default function EveningResetScreen() {
                       cx={RING_SIZE / 2}
                       cy={RING_SIZE / 2}
                       r={RADIUS}
-                      stroke={palette.orange}
+                      stroke={C.accent}
                       strokeWidth={STROKE_WIDTH}
                       fill="none"
                       strokeLinecap="round"
@@ -265,7 +264,7 @@ export default function EveningResetScreen() {
                     <Ionicons
                       name={isRunning ? "pause" : "play"}
                       size={22}
-                      color={palette.white}
+                      color={C.accentForeground}
                     />
                   </Pressable>
                 ) : null}
@@ -311,7 +310,7 @@ export default function EveningResetScreen() {
                             </View>
                             <View style={[s.stepIcon, isDone && s.stepIconActive]}>
                               {isDone ? (
-                                <Ionicons name="checkmark" size={14} color={palette.white} />
+                                <Ionicons name="checkmark" size={14} color={C.accentForeground} />
                               ) : null}
                             </View>
                           </Pressable>
@@ -369,7 +368,7 @@ export default function EveningResetScreen() {
 function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
   return StyleSheet.create({
     container: { flex: 1 },
-    aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.68 },
+    aurora: { position: "absolute", top: 0, left: 0, right: 0, opacity: 0.35 },
     auroraLight: { opacity: 0.5 },
     safeArea: { flex: 1, paddingHorizontal: 24 },
     header: {
@@ -421,7 +420,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       width: 66,
       height: 66,
       borderRadius: 33,
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       alignItems: "center",
       justifyContent: "center",
       marginTop: 14,
@@ -526,8 +525,8 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       justifyContent: "center",
     },
     stepIconActive: {
-      borderColor: palette.orangeStrong,
-      backgroundColor: palette.orangeStrong,
+      borderColor: C.accent,
+      backgroundColor: C.accent,
     },
     planCard: {
       gap: 10,
@@ -572,7 +571,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       flexShrink: 1,
     },
     planSaving: {
-      color: palette.orange,
+      color: C.accent,
       fontSize: 12,
       fontWeight: "600",
     },
@@ -599,14 +598,14 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
     },
     doneInlineButton: {
       marginTop: 16,
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderRadius: 14,
       paddingVertical: 14,
       paddingHorizontal: 28,
       alignItems: "center",
     },
     doneInlineButtonText: {
-      color: palette.white,
+      color: C.accentForeground,
       fontSize: 16,
       fontWeight: "700",
     },

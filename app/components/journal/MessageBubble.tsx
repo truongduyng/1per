@@ -214,11 +214,13 @@ export function MessageBubble({ entry, highlighted, onLongPress, onToggleItem, o
               onPress={() => onToggleItem(entry, item.id)}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: item.done }}
+              accessibilityLabel={item.text}
             >
               <Ionicons
                 name={item.done ? "checkmark-circle" : "ellipse-outline"}
                 size={20}
                 color={item.done ? C.accentText : C.textTertiary}
+                style={s.checkIcon}
               />
               <Text style={[s.checkText, item.done && s.checkTextDone]}>{item.text}</Text>
             </Pressable>
@@ -290,12 +292,10 @@ export function MessageBubble({ entry, highlighted, onLongPress, onToggleItem, o
 function makeStyles(C: ReturnType<typeof useTheme>) {
   return StyleSheet.create({
     bubble: {
-      alignSelf: "flex-end",
-      maxWidth: "86%",
-      minWidth: 120,
-      backgroundColor: C.accentBgSubtle,
+      alignSelf: "stretch",
+      backgroundColor: C.cardBg,
       borderWidth: 1,
-      borderColor: C.accentBorder,
+      borderColor: C.cardBorder,
       borderRadius: 18,
       borderBottomRightRadius: 6,
       padding: 10,
@@ -315,7 +315,7 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
       backgroundColor: C.accentBg,
     },
     habitChipText: { flexShrink: 1, fontSize: 12, fontWeight: "700", color: C.accentText },
-    note: { fontSize: 15, lineHeight: 21, color: C.textPrimary },
+    note: { fontSize: 16, lineHeight: 24, color: C.textPrimary },
     inlineTag: { color: C.accentText, fontWeight: "600" },
     inlineLink: { color: C.accentText, textDecorationLine: "underline" },
     grid: { flexDirection: "row", flexWrap: "wrap", gap: 4, width: 240 },
@@ -329,9 +329,10 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     },
     moreText: { color: "#fff", fontSize: 20, fontWeight: "700" },
     checklist: { gap: 2 },
-    checklistMeta: { fontSize: 11, fontWeight: "700", letterSpacing: 0.5, color: C.textTertiary },
-    checkRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 4 },
-    checkText: { flex: 1, fontSize: 15, lineHeight: 20, color: C.textPrimary },
+    checklistMeta: { fontSize: 12, fontWeight: "600", color: C.textSecondary },
+    checkRow: { flexDirection: "row", alignItems: "flex-start", gap: 8, minHeight: 44, paddingVertical: 12 },
+    checkIcon: { flexShrink: 0 },
+    checkText: { flex: 1, minWidth: 0, fontSize: 16, lineHeight: 24, color: C.textPrimary },
     checkTextDone: { color: C.textTertiary, textDecorationLine: "line-through" },
     card: {
       flexDirection: "row",
@@ -372,6 +373,6 @@ function makeStyles(C: ReturnType<typeof useTheme>) {
     },
     reminderPast: { backgroundColor: C.cardBg },
     reminderText: { fontSize: 11, fontWeight: "600", color: C.accentText },
-    time: { fontSize: 11, color: C.textTertiary },
+    time: { fontSize: 12, color: C.textTertiary },
   });
 }

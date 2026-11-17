@@ -41,3 +41,4 @@ lerna-debug.log*
 # Build outputs (workspaces have their own .gitignore for specific outputs)
 dist/
 build/
+/output/

@@ -20,7 +20,6 @@ import GradientBackground from "@/components/GradientBackground";
 import { resetDatabase } from "@/lib/db";
 import { insertAllScreenshotData } from "@/utils/generateTestData";
 import { ThemePreference, useThemePreference } from "@/contexts/ThemeContext";
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useReminderManager } from "@/hooks/useReminderManager";
@@ -259,7 +258,7 @@ export default function SettingsScreen() {
   const s = makeStyles(C, insets);
   const reminderSwitchTrackColor = {
     false: C.cardBorder,
-    true: palette.orange,
+    true: C.accent,
   };
   const reminderSwitchThumbColor =
     Platform.OS === "android" ? C.cardBg : undefined;
@@ -356,7 +355,7 @@ export default function SettingsScreen() {
                   </Text>
                   <Text
                     selectable
-                    style={[s.rowValue, { color: palette.orange }]}
+                    style={[s.rowValue, { color: C.accent }]}
                   >
                     {formatTime(habitState.hour, habitState.minute)}
                   </Text>
@@ -398,7 +397,7 @@ export default function SettingsScreen() {
                   </Text>
                   <Text
                     selectable
-                    style={[s.rowValue, { color: palette.orange }]}
+                    style={[s.rowValue, { color: C.accent }]}
                   >
                     {formatTime(eveningState.hour, eveningState.minute)}
                   </Text>
@@ -419,7 +418,7 @@ export default function SettingsScreen() {
                   Auto-organize messages
                 </Text>
                 <Text selectable style={{ fontSize: 12, color: C.textTertiary, marginTop: 2 }}>
-                  Tags messages and logs the habit they mention, on-device
+                  Understands habits, checklists and reminders from your messages, on-device
                   {isOnDeviceModelAvailable() ? " with Apple Intelligence" : ""}.
                 </Text>
               </View>
@@ -483,7 +482,7 @@ export default function SettingsScreen() {
                 </Text>
                 <Text
                   selectable
-                  style={[s.rowValue, { color: palette.orange }]}
+                  style={[s.rowValue, { color: C.accent }]}
                 >
                   {formatTime(appLockTime.hour, appLockTime.minute)}
                 </Text>
@@ -650,7 +649,7 @@ export default function SettingsScreen() {
                 <Pressable onPress={commitPicker}>
                   <Text
                     selectable
-                    style={[s.pickerBtn, { color: palette.orange }]}
+                    style={[s.pickerBtn, { color: C.accent }]}
                   >
                     Done
                   </Text>
@@ -732,7 +731,7 @@ function makeStyles(
       fontWeight: "700",
     },
     segmentLabelActive: {
-      color: palette.orange,
+      color: C.accent,
     },
     listCard: {
       borderRadius: 24,

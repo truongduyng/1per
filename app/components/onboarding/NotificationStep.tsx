@@ -7,7 +7,6 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { palette } from "@/constants/theme";
 import { useTheme } from "@/hooks/useTheme";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
 
@@ -72,7 +71,7 @@ export default function NotificationStep({ onNext }: NotificationStepProps) {
               style={s.benefitRow}
             >
               <View style={s.benefitIcon}>
-                <Ionicons name={item.icon} size={28} color={palette.orange} />
+                <Ionicons name={item.icon} size={28} color={C.accent} />
               </View>
               <View style={s.benefitCopy}>
                 <Text style={s.benefitTitle}>{item.title}</Text>
@@ -134,7 +133,7 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       lineHeight: 38,
     },
     highlight: {
-      color: palette.orange,
+      color: C.accentText,
     },
     body: {
       fontSize: 16,
@@ -184,13 +183,13 @@ function makeStyles(C: ReturnType<typeof import("@/hooks/useTheme").useTheme>) {
       alignItems: "center",
     },
     btn: {
-      backgroundColor: palette.orange,
+      backgroundColor: C.accent,
       borderRadius: 14,
       paddingVertical: 18,
       alignItems: "center",
       width: "100%",
     },
-    btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+    btnText: { color: C.accentForeground, fontSize: 16, fontWeight: "700" },
     skipText: {
       color: C.textTertiary,
       fontSize: 14,

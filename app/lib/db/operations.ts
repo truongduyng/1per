@@ -1,8 +1,8 @@
-import { eq, desc, asc, count, and, isNull, isNotNull } from 'drizzle-orm';
+import { eq, desc, asc, and, isNull, isNotNull } from 'drizzle-orm';
 import {
   db,
   profiles, habits, habitCompletions, dailyFocus, dailyAffirmations, challenges, journalEntries,
-  type NewProfile, type NewHabit, type NewHabitCompletion, type NewDailyFocus,
+  type NewProfile, type NewHabit,
   type NewDailyAffirmation,
 } from './database';
 import { ensureDatabaseInitialized } from './init';
@@ -406,18 +406,18 @@ function journalValues(draft: JournalDraft) {
 }
 
 export const journalEntryOps = {
-  async create(draft: Partial<JournalDraft> & { date?: string }) {
+  async create(draft: Partial<JournalDraft> & { date?: string }, autoTags: string[] = []) {
     const date = draft.date ?? getLocalDateString(new Date());
     const values = journalValues({ ...emptyJournalDraft(), ...draft });
     return await withInitializedDb(() =>
-      db.insert(journalEntries).values({ date, ...values, updatedAt: new Date() }).returning()
+      db.insert(journalEntries).values({ date, ...values, autoTags: encodeJsonArray(autoTags), updatedAt: new Date() }).returning()
     );
   },
 
-  async update(id: number, draft: JournalDraft) {
+  async update(id: number, draft: JournalDraft, autoTags?: string[]) {
     return await withInitializedDb(() =>
       db.update(journalEntries)
-        .set({ ...journalValues(draft), updatedAt: new Date() })
+        .set({ ...journalValues(draft), ...(autoTags !== undefined ? { autoTags: encodeJsonArray(autoTags) } : {}), updatedAt: new Date() })
         .where(eq(journalEntries.id, id))
         .returning()
     );
@@ -430,15 +430,20 @@ export const journalEntryOps = {
     return result[0] ?? null;
   },
 
-  /** Writes on-device analysis results without touching the user's own fields. */
-  async setAnalysis(id: number, data: { autoTags: string[]; habitId?: number | null }) {
+  /** Apply only if the saved message is still the exact version analyzed. */
+  async setAnalysis(id: number, expected: typeof journalEntries.$inferSelect, data: {
+    autoTags: string[]; habitId: number | null; checklist: JournalChecklistItem[]; remindAt: Date | null;
+  }) {
+    const textFields = ['note', 'photoUri', 'tags', 'autoTags', 'links', 'attachments', 'checklist'] as const;
     return await withInitializedDb(() =>
       db.update(journalEntries)
-        .set({
-          autoTags: encodeJsonArray(data.autoTags),
-          ...(data.habitId !== undefined ? { habitId: data.habitId } : {}),
-        })
-        .where(eq(journalEntries.id, id))
+        .set({ ...data, autoTags: encodeJsonArray(data.autoTags), checklist: encodeJsonArray(data.checklist), updatedAt: new Date() })
+        .where(and(
+          eq(journalEntries.id, id),
+          ...textFields.map((key) => expected[key] === null ? isNull(journalEntries[key]) : eq(journalEntries[key], expected[key]!)),
+          expected.habitId === null ? isNull(journalEntries.habitId) : eq(journalEntries.habitId, expected.habitId),
+          expected.remindAt === null ? isNull(journalEntries.remindAt) : eq(journalEntries.remindAt, expected.remindAt),
+        ))
         .returning()
     );
   },

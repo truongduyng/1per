@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import React from "react";
 import { Keyboard, Pressable, Text, TextInput, View } from "react-native";
 
-import { palette } from "@/constants/theme";
 import {
   DEFAULT_KEYSTONE_HABITS,
   KEYSTONE_HABITS_BY_FOCUS,
@@ -11,7 +10,7 @@ import {
 import { useTheme } from "@/hooks/useTheme";
 import { PAIN_TO_HABIT } from "./data";
 import { ScreenShell } from "./shared";
-import { ORANGE, SOFT_ORANGE, makeStyles } from "./theme";
+import { makeStyles } from "./theme";
 
 export const CUSTOM_HABIT_ID = "custom";
 
@@ -75,7 +74,7 @@ export function KeystoneScreen({
           <View style={s.painReminder}>
             {painPoints.map((pain) => (
               <View key={pain} style={s.painTag}>
-                <Ionicons name="alert-circle-outline" size={12} color={SOFT_ORANGE} />
+                <Ionicons name="alert-circle-outline" size={12} color={C.accentText} />
                 <Text style={s.painTagText}>{pain}</Text>
               </View>
             ))}
@@ -94,7 +93,7 @@ export function KeystoneScreen({
               style={[s.habitCard, active && s.habitCardActive, dim && s.dimmed]}
             >
               <View style={[s.habitIconWrap, active && s.habitIconWrapActive]}>
-                <Ionicons name={habit.icon} size={22} color={active ? ORANGE : palette.white70} />
+                <Ionicons name={habit.icon} size={22} color={active ? C.accentText : C.iconSecondary} />
               </View>
               <View style={s.flex}>
                 <Text style={[s.habitTitle, active && s.habitTitleActive]}>{habit.title}</Text>
@@ -103,7 +102,7 @@ export function KeystoneScreen({
               <Ionicons
                 name={active ? "checkmark-circle" : "ellipse-outline"}
                 size={22}
-                color={active ? ORANGE : palette.white45}
+                color={active ? C.accentText : C.iconTertiary}
               />
             </Pressable>
           );
@@ -114,7 +113,7 @@ export function KeystoneScreen({
           style={[s.habitCard, isCustomActive && s.habitCardActive, isCustomDim && s.dimmed]}
         >
           <View style={[s.habitIconWrap, isCustomActive && s.habitIconWrapActive]}>
-            <Ionicons name="create-outline" size={22} color={isCustomActive ? ORANGE : palette.white70} />
+            <Ionicons name="create-outline" size={22} color={isCustomActive ? C.accentText : C.iconSecondary} />
           </View>
           <View style={s.flex}>
             {customExpanded ? (
@@ -123,9 +122,9 @@ export function KeystoneScreen({
                 value={customHabitTitle}
                 onChangeText={handleCustomChange}
                 placeholder="Type your habit..."
-                placeholderTextColor={palette.white55}
+                placeholderTextColor={C.textPlaceholder}
                 style={s.customHabitInput}
-                selectionColor={ORANGE}
+                selectionColor={C.accentText}
                 maxLength={60}
                 returnKeyType="done"
                 onSubmitEditing={() => Keyboard.dismiss()}
@@ -142,7 +141,7 @@ export function KeystoneScreen({
           <Ionicons
             name={isCustomActive ? "checkmark-circle" : "ellipse-outline"}
             size={22}
-            color={isCustomActive ? ORANGE : palette.white45}
+            color={isCustomActive ? C.accentText : C.iconTertiary}
           />
         </Pressable>
       </View>

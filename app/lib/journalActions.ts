@@ -1,13 +1,14 @@
-import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
 import { deleteBackedUpJournalMedia, deleteBackedUpJournalPhoto } from './cloudSync';
-import { completionOps, habitOps, journalEntryOps } from './db';
+import { completionOps, habitOps, journalEntryOps, type JournalEntry } from './db';
 import { analyzeMessage } from './journalIntelligence';
 import { isAutoOrganizeEnabled } from './journalSettings';
+import { foldText } from './journalIntents';
 import {
   cancelJournalReminder,
   draftFromEntry,
+  ensureReminderPermission,
   mergeTags,
   newLocalId,
   parseJournalEntry,
@@ -47,16 +48,14 @@ export async function pickJournalMedia(
     Alert.alert('Attachment limit', `A message can hold up to ${MAX_ATTACHMENTS} attachments.`);
     return [];
   }
-  const permission =
-    source === 'camera'
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!permission.granted) {
-    Alert.alert(
-      source === 'camera' ? 'Camera access needed' : 'Photo access needed',
-      'Enable access in Settings to attach photos and videos.',
-    );
-    return [];
+  // The system library picker grants access only to the chosen items; it does
+  // not require broad library access (including when grid access was denied).
+  if (source === 'camera') {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Camera access needed', 'Enable camera access in Settings to take photos and videos.');
+      return [];
+    }
   }
 
   const options: ImagePicker.ImagePickerOptions = {
@@ -74,32 +73,6 @@ export async function pickJournalMedia(
       : await ImagePicker.launchImageLibraryAsync(options);
   if (result.canceled || !result.assets?.length) return [];
   return result.assets.slice(0, remaining).map(fromImagePickerAsset);
-}
-
-export async function pickJournalFiles(remaining: number): Promise<JournalAttachment[]> {
-  if (remaining <= 0) {
-    Alert.alert('Attachment limit', `A message can hold up to ${MAX_ATTACHMENTS} attachments.`);
-    return [];
-  }
-  const result = await DocumentPicker.getDocumentAsync({
-    multiple: true,
-    copyToCacheDirectory: true,
-  });
-  if (result.canceled || !result.assets?.length) return [];
-  return result.assets.slice(0, remaining).map((asset) => {
-    const id = newLocalId();
-    const mime = asset.mimeType ?? null;
-    // Images/videos sent as files still render inline.
-    const kind = mime?.startsWith('image/') ? 'photo' : mime?.startsWith('video/') ? 'video' : 'file';
-    return {
-      id,
-      kind,
-      uri: persistJournalMedia(asset.uri, id, asset.name),
-      name: asset.name,
-      mimeType: mime,
-      size: asset.size ?? null,
-    } satisfies JournalAttachment;
-  });
 }
 
 /** Removes local copies for attachments that were picked but never saved. */
@@ -123,44 +96,83 @@ async function logHabit(habitId: number, dateKey: string) {
   }
 }
 
-/**
- * Runs on-device analysis after a message is saved: adds topic tags and, when
- * the user didn't pick a habit, links + ticks the habit the message reports.
- * Runs in the background so sending stays instant.
- */
-async function analyzeAndApply(entry: ParsedJournalEntry, options: { matchHabit: boolean }) {
+// Each edit/delete/correction invalidates results that are still in flight.
+const analysisJobs = new Map<number, symbol>();
+function invalidateAnalysis(id: number) {
+  const pending = analysisJobs.has(id);
+  analysisJobs.delete(id);
+  return pending;
+}
+
+function analyzeInBackground(row: JournalEntry, referenceDate = new Date()) {
   if (!isAutoOrganizeEnabled()) return;
-  try {
-    const [habits, rows] = await Promise.all([habitOps.getAll(), journalEntryOps.getAll()]);
-    const knownTags = mergeTags(...rows.map((r) => parseJournalEntry(r).tags));
-    const result = await analyzeMessage({
-      text: entry.note,
-      habits,
-      knownTags,
-      attachments: entry.attachments,
-      matchHabit: options.matchHabit && !entry.habitId,
-    });
-    const habitId = result.habitId ?? undefined;
-    await journalEntryOps.setAnalysis(entry.id, { autoTags: result.tags, habitId });
-    if (habitId) await logHabit(habitId, entry.date);
-  } catch (error) {
-    console.warn('Journal analysis failed:', error);
-  }
+  const token = Symbol();
+  analysisJobs.set(row.id, token);
+  const current = () => analysisJobs.get(row.id) === token && isAutoOrganizeEnabled();
+  const previous = parseJournalEntry(row);
+  void (async () => {
+    try {
+      const [habits, rows] = await Promise.all([habitOps.getAll(), journalEntryOps.getAll()]);
+      if (!current()) return;
+      const knownTags = mergeTags(...rows.map((item) => parseJournalEntry(item).tags));
+      const result = await analyzeMessage({
+        text: previous.note, habits, knownTags, attachments: previous.attachments, now: referenceDate,
+      });
+      if (!current()) return;
+      // Don't request permissions or apply actions for a deleted/replaced message.
+      const saved = await journalEntryOps.getById(row.id);
+      if (!current() || !saved || JSON.stringify(saved) !== JSON.stringify(row)) return;
+      let remindAt = result.remindAt;
+      let notice: string | null = result.reminderRequested && !remindAt
+        ? 'Your message is saved, but the reminder needs a clear future date and time. Edit the message, for example: “Remind me tomorrow at 8 AM to call Mum.”'
+        : null;
+      if (remindAt && !(await ensureReminderPermission())) {
+        remindAt = null;
+        notice = 'Your message is saved, but notifications are off. Enable notifications in Settings, then send the reminder again.';
+      }
+      if (!current()) return;
+      // A relative reminder can expire while the model or permission prompt is open.
+      if (remindAt && remindAt.getTime() <= Date.now()) {
+        remindAt = null;
+        notice = 'Your message is saved, but the reminder time has passed. Edit the message with a future time.';
+      }
+      const checklist = result.checklist.map((item) => {
+        const existing = previous.checklist.find((old) => foldText(old.text.trim()) === foldText(item.text));
+        return { id: existing?.id ?? newLocalId(), text: item.text, done: existing?.done ?? item.done };
+      });
+      const [updated] = await journalEntryOps.setAnalysis(row.id, row, {
+        habitId: result.habitId, checklist, remindAt, autoTags: result.tags,
+      });
+      if (!current() || !updated) return;
+      const entry = parseJournalEntry(updated);
+      if (entry.habitId && entry.habitId !== previous.habitId) await logHabit(entry.habitId, entry.date);
+      if (!current()) return;
+      if (entry.remindAt || previous.remindAt) await syncJournalReminder(entry);
+      if (current() && notice) Alert.alert('Reminder', notice);
+    } catch (error) {
+      // The original message is already saved even if understanding fails.
+      console.info('Journal background understanding failed:', error);
+    } finally {
+      if (analysisJobs.get(row.id) === token) analysisJobs.delete(row.id);
+    }
+  })();
 }
 
 export async function createJournalMessage(draft: JournalDraft): Promise<ParsedJournalEntry | null> {
+  const referenceDate = new Date();
   const [row] = await journalEntryOps.create(draft);
   if (!row) return null;
-  const entry = parseJournalEntry(row);
-  if (entry.habitId) await logHabit(entry.habitId, entry.date);
-  if (entry.remindAt) await syncJournalReminder(entry);
-  void analyzeAndApply(entry, { matchHabit: true });
-  return entry;
+  analyzeInBackground(row, referenceDate);
+  return parseJournalEntry(row);
 }
 
-/** Saves edits and cleans up files/backups for attachments the edit removed. */
+/** Save first; inference updates only this version of the message in the background. */
 export async function updateJournalMessage(previous: ParsedJournalEntry, draft: JournalDraft) {
+  const referenceDate = new Date();
+  const wasPending = invalidateAnalysis(previous.id);
+  const textChanged = draft.note.trim() !== previous.note.trim();
   const [row] = await journalEntryOps.update(previous.id, draft);
+  if (!row) return null;
   const keptIds = new Set(draft.attachments.map((a) => a.id));
   const removed = previous.attachments.filter((a) => !keptIds.has(a.id));
   discardAttachments(removed);
@@ -169,28 +181,20 @@ export async function updateJournalMessage(previous: ParsedJournalEntry, draft: 
     deleteJournalPhoto(previous.photoUri);
     deleteBackedUpJournalPhoto(previous.id);
   }
-  if (!row) return null;
-  const entry = parseJournalEntry(row);
-  await syncJournalReminder(entry);
-  if (entry.habitId && entry.habitId !== previous.habitId) await logHabit(entry.habitId, entry.date);
-  // Re-suggest tags when the text changed; never re-link a habit the user may have removed.
-  if (entry.note !== previous.note) void analyzeAndApply(entry, { matchHabit: false });
-  return entry;
+  if (textChanged || wasPending) analyzeInBackground(row, referenceDate);
+  return parseJournalEntry(row);
 }
 
 /** Unlinks the habit; optionally also unticks it for that day. */
 export async function unlinkJournalHabit(entry: ParsedJournalEntry, alsoUncheck: boolean) {
+  invalidateAnalysis(entry.id);
   if (!entry.habitId) return;
   await journalEntryOps.setHabit(entry.id, null);
   if (alsoUncheck) await completionOps.markUndone(entry.habitId, dateFromKey(entry.date));
 }
 
-export async function linkJournalHabit(entry: ParsedJournalEntry, habitId: number) {
-  await journalEntryOps.setHabit(entry.id, habitId);
-  await logHabit(habitId, entry.date);
-}
-
 export async function deleteJournalMessage(entry: ParsedJournalEntry) {
+  invalidateAnalysis(entry.id);
   await cancelJournalReminder(entry.id);
   await journalEntryOps.delete(entry.id);
   discardAttachments(entry.attachments);
@@ -202,36 +206,15 @@ export async function deleteJournalMessage(entry: ParsedJournalEntry) {
 }
 
 export async function setJournalReminder(entry: ParsedJournalEntry, remindAt: Date | null) {
+  invalidateAnalysis(entry.id);
   const updated = await journalEntryOps.update(entry.id, { ...draftFromEntry(entry), remindAt });
   if (updated[0]) await syncJournalReminder(parseJournalEntry(updated[0]));
 }
 
 export async function toggleChecklistItem(entry: ParsedJournalEntry, itemId: string) {
+  invalidateAnalysis(entry.id);
   const checklist = entry.checklist.map((item) =>
     item.id === itemId ? { ...item, done: !item.done } : item,
   );
   await journalEntryOps.setChecklist(entry.id, checklist);
-}
-
-// ── Reminder presets ─────────────────────────────────────────────────────────
-
-export function reminderPresets(now = new Date()): { label: string; date: Date }[] {
-  const at = (daysAhead: number, hour: number) => {
-    const d = new Date(now);
-    d.setDate(d.getDate() + daysAhead);
-    d.setHours(hour, 0, 0, 0);
-    return d;
-  };
-  const inOneHour = new Date(now.getTime() + 60 * 60 * 1000);
-  inOneHour.setSeconds(0, 0);
-  const presets = [{ label: 'In 1 hour', date: inOneHour }];
-  const tonight = at(0, 20);
-  if (tonight.getTime() - now.getTime() > 60 * 60 * 1000) {
-    presets.push({ label: 'Tonight, 8 PM', date: tonight });
-  }
-  presets.push({ label: 'Tomorrow, 9 AM', date: at(1, 9) });
-  // Next Monday morning (or a week out if today is Monday).
-  const daysToMonday = ((8 - now.getDay()) % 7) || 7;
-  presets.push({ label: 'Next week', date: at(daysToMonday, 9) });
-  return presets;
 }
