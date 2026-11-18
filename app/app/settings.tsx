@@ -25,7 +25,13 @@ import { useRevenueCat } from "@/hooks/useRevenueCat";
 import { useReminderManager } from "@/hooks/useReminderManager";
 import { appBlocker, type AppLockCondition } from "@/lib/appBlocker";
 import { cancelAllNotifications } from "@/lib/notifications";
-import { isAutoOrganizeEnabled, setAutoOrganizeEnabled } from "@/lib/journalSettings";
+import {
+  DICTATION_LANGUAGE_OPTIONS,
+  getDictationLanguage,
+  isAutoOrganizeEnabled,
+  setAutoOrganizeEnabled,
+  setDictationLanguage,
+} from "@/lib/journalSettings";
 import { isOnDeviceModelAvailable } from "@/lib/journalIntelligence";
 import { backupNow, getLastBackupAt, restoreNow } from "@/lib/cloudSync";
 
@@ -187,6 +193,7 @@ export default function SettingsScreen() {
   );
   const [isUpdatingAppLockTime, setIsUpdatingAppLockTime] = useState(false);
   const [autoOrganize, setAutoOrganize] = useState(isAutoOrganizeEnabled);
+  const [dictationLanguage, setDictationLanguageState] = useState(getDictationLanguage);
   const [lockCondition, setLockCondition] = useState(() =>
     appBlocker.getLockCondition(),
   );
@@ -432,6 +439,36 @@ export default function SettingsScreen() {
                 thumbColor={reminderSwitchThumbColor}
                 ios_backgroundColor={C.cardBorder}
               />
+            </View>
+          </View>
+          <View style={s.card}>
+            <Text selectable style={s.cardTitle}>
+              Dictation language
+            </Text>
+            <Text selectable style={s.cardCopy}>
+              The language the Journal mic listens for. Auto follows your iPhone&apos;s language.
+            </Text>
+            <View style={s.segmentRow}>
+              {DICTATION_LANGUAGE_OPTIONS.map((option) => {
+                const active = dictationLanguage === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    style={[s.segmentButton, active && s.segmentButtonActive]}
+                    onPress={() => {
+                      setDictationLanguage(option.value);
+                      setDictationLanguageState(option.value);
+                    }}
+                  >
+                    <Text
+                      selectable
+                      style={[s.segmentLabel, active && s.segmentLabelActive]}
+                    >
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
             </View>
           </View>
         </View>

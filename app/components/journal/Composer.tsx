@@ -11,7 +11,11 @@ import {
   discardAttachments,
   updateJournalMessage,
 } from "@/lib/journalActions";
-import { useVoiceTranscription } from "@/lib/voiceTranscription";
+import {
+  describeError,
+  useVoiceTranscription,
+  type VoiceTranscriptionError,
+} from "@/lib/voiceTranscription";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +24,7 @@ import {
   Alert,
   Image,
   Keyboard,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -53,9 +58,28 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
   // Attachments picked in this composing session; removed from disk if never sent.
   const freshIds = useRef(new Set<string>());
 
+  // When the app's transcription can't run, fall back to the keyboard: iOS's
+  // own keyboard dictation mic often still works (and handles any language).
+  const showVoiceError = (error: VoiceTranscriptionError) => {
+    const focusKeyboard = () => setTimeout(() => inputRef.current?.focus(), 50);
+    const buttons: Parameters<typeof Alert.alert>[2] = [];
+    if (error.needsSettings) {
+      buttons.push({ text: "Open Settings", onPress: () => Linking.openSettings() });
+    }
+    if (error.suggestKeyboard) {
+      buttons.push({ text: "Use keyboard", style: "cancel", onPress: focusKeyboard });
+    } else {
+      buttons.push({ text: "OK", style: "cancel" });
+    }
+    Alert.alert(error.title, error.message, buttons, {
+      cancelable: true,
+      onDismiss: error.suggestKeyboard ? focusKeyboard : undefined,
+    });
+  };
+
   const voice = useVoiceTranscription(
     (spoken) => setText(spoken.slice(0, MESSAGE_MAX_LENGTH)),
-    (message) => Alert.alert("Couldn't transcribe", message),
+    showVoiceError,
   );
   const isRecording = voice.status === "listening";
 
@@ -136,10 +160,7 @@ export function Composer({ editing, onCancelEdit, onSent, knownTags }: Props) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } catch (error) {
       console.warn("Failed to start speech recognition:", error);
-      Alert.alert(
-        "Microphone access needed",
-        "Enable microphone and speech recognition access in Settings to dictate.",
-      );
+      showVoiceError(describeError("not-allowed"));
     }
   };
 
