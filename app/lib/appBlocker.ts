@@ -1,3 +1,4 @@
+import React from "react";
 import * as DeviceActivity from "react-native-device-activity";
 import { storage, STORAGE_KEYS } from "@/lib/storage";
 
@@ -161,6 +162,24 @@ export const appBlocker = {
     return this.getSelectionSummary();
   },
 
+  // Call after the picker is dismissed. The library keeps a cumulative
+  // blocklist (blockSelection unions into it, unblockSelection subtracts the
+  // *currently saved* selection). The persisted picker overwrites the saved
+  // selection while the user edits it, so by the time we get here the old
+  // selection is gone and apps the user just removed can no longer be
+  // subtracted - they'd stay shielded forever. Reset the whole blocklist and
+  // rebuild it from the new selection instead.
+  async applySelectionChange(locked: boolean): Promise<AppBlockerSelectionSummary> {
+    if (!DeviceActivity.isAvailable()) return { supported: false };
+    DeviceActivity.resetBlocks("Kadoze blocked apps changed");
+    const summary = await this.getSelectionSummary();
+    if (summary.hasSelection && locked) {
+      return this.applyShield();
+    }
+    DeviceActivity.refreshManagedSettingsStore();
+    return summary;
+  },
+
   async clearShield() {
     if (!DeviceActivity.isAvailable()) return false;
     DeviceActivity.unblockSelection(getSelectionInput(), "Kadoze anti-doomscroll lock unlocked");
@@ -219,5 +238,16 @@ export const appBlocker = {
   },
 };
 
-export const AppBlockerSelectionSheet = DeviceActivity.DeviceActivitySelectionSheetViewPersisted;
+// `includeEntireCategory` must be passed: the native persisted picker only
+// loads the previously saved selection (familyActivitySelectionId) once that
+// prop is set. Without it the picker opens empty and immediately persists the
+// empty selection, wiping the user's blocked apps.
+export function AppBlockerSelectionSheet(
+  props: DeviceActivity.DeviceActivitySelectionSheetViewPersistedProps,
+) {
+  return React.createElement(DeviceActivity.DeviceActivitySelectionSheetViewPersisted, {
+    includeEntireCategory: false,
+    ...props,
+  });
+}
 export type AppBlockerSelectionMetadata = DeviceActivity.ActivitySelectionMetadata;

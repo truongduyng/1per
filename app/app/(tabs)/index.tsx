@@ -452,15 +452,11 @@ export default function HomeScreen() {
     setShowBlockerPicker(false);
 
     try {
-      const selection = await appBlocker.getSelectionSummary();
+      // Rebuild the shield from scratch so apps removed from the selection
+      // are actually unblocked (see appBlocker.applySelectionChange).
+      const selection = await appBlocker.applySelectionChange(!appLockUnlocked);
       setBlockerSelection(selection);
-      // The shield only reflects the selection that was active the last
-      // time applyShield ran - if the selection changed (e.g. an app was
-      // removed) the old shield stays on that app until we clear it and
-      // re-apply against the new selection.
-      await appBlocker.clearShield();
       if (selection.hasSelection && !appLockUnlocked) {
-        await appBlocker.applyShield();
         setBlockerStatus("Shield active");
       } else {
         setBlockerStatus(selection.hasSelection ? "Ready" : "No apps selected");
