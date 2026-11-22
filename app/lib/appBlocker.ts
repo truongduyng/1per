@@ -133,6 +133,15 @@ function mapAuthorizationStatus(
   return "unknown";
 }
 
+// The native picker fires onDismissRequest the instant Done is tapped, but
+// writes the new selection to the App Group only after a 0.1s debounce.
+// Reading it right away returns the *old* selection - so removed apps were
+// re-blocked. Give the write time to land before reading the selection.
+const PICKER_PERSIST_DELAY_MS = 400;
+export function waitForPickerSelectionToPersist() {
+  return new Promise<void>((resolve) => setTimeout(resolve, PICKER_PERSIST_DELAY_MS));
+}
+
 export const appBlocker = {
   isSupported: DeviceActivity.isAvailable(),
 
@@ -171,6 +180,7 @@ export const appBlocker = {
   // rebuild it from the new selection instead.
   async applySelectionChange(locked: boolean): Promise<AppBlockerSelectionSummary> {
     if (!DeviceActivity.isAvailable()) return { supported: false };
+    await waitForPickerSelectionToPersist();
     DeviceActivity.resetBlocks("Kadoze blocked apps changed");
     const summary = await this.getSelectionSummary();
     if (summary.hasSelection && locked) {

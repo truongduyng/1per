@@ -8,6 +8,7 @@ import {
   appBlocker,
   type AppBlockerSelectionMetadata,
   type AppBlockerSelectionSummary,
+  waitForPickerSelectionToPersist,
 } from "@/lib/appBlocker";
 
 interface ScreenTimeStepProps {
@@ -69,12 +70,16 @@ export default function ScreenTimeStep({ onNext }: ScreenTimeStepProps) {
   };
 
   const handlePickerDismiss = async () => {
-    setShowPicker(false);
     try {
+      // The picker saves the selection shortly after dismissing - keep it
+      // mounted and wait, or we'd read the previous selection.
+      await waitForPickerSelectionToPersist();
+      setShowPicker(false);
       const summary = await appBlocker.getSelectionSummary();
       setSelection(summary);
       setStatus(summary.hasSelection ? "Apps selected - locked for now" : "No apps selected");
     } catch {
+      setShowPicker(false);
       setStatus("Screen Time setup failed");
     }
   };

@@ -449,12 +449,13 @@ export default function HomeScreen() {
   };
 
   const handleBlockerPickerDismiss = async () => {
-    setShowBlockerPicker(false);
-
     try {
+      setBlockerStatus("Updating blocked apps...");
       // Rebuild the shield from scratch so apps removed from the selection
-      // are actually unblocked (see appBlocker.applySelectionChange).
+      // are actually unblocked (see appBlocker.applySelectionChange). The
+      // picker view stays mounted until then so its pending save can finish.
       const selection = await appBlocker.applySelectionChange(!appLockUnlocked);
+      setShowBlockerPicker(false);
       setBlockerSelection(selection);
       if (selection.hasSelection && !appLockUnlocked) {
         setBlockerStatus("Shield active");
@@ -462,6 +463,7 @@ export default function HomeScreen() {
         setBlockerStatus(selection.hasSelection ? "Ready" : "No apps selected");
       }
     } catch {
+      setShowBlockerPicker(false);
       setBlockerStatus("Screen Time setup failed");
     }
   };
