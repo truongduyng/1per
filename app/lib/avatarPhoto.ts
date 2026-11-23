@@ -1,10 +1,10 @@
 import { Directory, File, Paths } from 'expo-file-system';
 
 // The profile avatar photo is copied out of the picker's cache into the app's
-// document directory so it survives the OS clearing caches. It stays
-// on-device - like every other piece of user data in this app, nothing is
-// uploaded.
-const AVATAR_DIR_NAME = 'avatar-photos';
+// document directory so it survives the OS clearing caches. When the user is
+// signed in to cloud backup it is also uploaded (see lib/cloudSync.ts) so it
+// comes back after reinstalling the app.
+export const AVATAR_DIR_NAME = 'avatar-photos';
 
 function avatarDirectory(): Directory {
   const dir = new Directory(Paths.document, AVATAR_DIR_NAME);

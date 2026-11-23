@@ -157,6 +157,7 @@ const MEDIA_KINDS: Record<string, { contentType: string; maxBytes: number }> = {
   focus: { contentType: "video/mp4", maxBytes: 100_000_000 },
   "habit-photo": { contentType: "image/jpeg", maxBytes: 15_000_000 },
   "journal-photo": { contentType: "image/jpeg", maxBytes: 15_000_000 },
+  avatar: { contentType: "image/jpeg", maxBytes: 15_000_000 },
   // Journal attachments: photos, videos, or arbitrary files. The client's
   // Content-Type is kept (see mediaContentType) so files restore as-is.
   "journal-media": { contentType: "application/octet-stream", maxBytes: 100_000_000 },
