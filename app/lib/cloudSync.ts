@@ -13,9 +13,10 @@ import { exportSettingsSnapshot, importSettingsSnapshot } from "./settingsSync";
 import { subscribeToDataChanges } from "./db/changeListener";
 import { storage, STORAGE_KEYS } from "./storage";
 import { Directory, File, Paths } from "expo-file-system";
-import { db, dailyFocus, habitCompletions, journalEntries } from "./db";
+import { db, dailyFocus, habitCompletions, journalEntries, profiles } from "./db";
 import { eq } from "drizzle-orm";
 import { JOURNAL_MEDIA_DIR_NAME } from "./journalPhotos";
+import { AVATAR_DIR_NAME, isAvatarPhotoUri } from "./avatarPhoto";
 import { encodeJsonArray, parseJournalEntry, reconcileJournalReminders } from "./journal";
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
@@ -157,6 +158,11 @@ async function backupMediaFiles() {
     if (row.videoUri) await backupMedia("focus", row.date, row.videoUri);
   }
 
+  const profileRows = await db.select().from(profiles);
+  for (const row of profileRows) {
+    if (isLocalAvatarFile(row.avatar)) await backupMedia("avatar", String(row.id), row.avatar);
+  }
+
   const habitPhotoRows = await db.select().from(habitCompletions);
   for (const row of habitPhotoRows) {
     if (row.photoUri) await backupMedia("habit-photo", String(row.id), row.photoUri);
@@ -174,6 +180,12 @@ async function backupMediaFiles() {
       );
     }
   }
+}
+
+// Only photos the app copied into its own storage - not legacy icon ids
+// (`game:spark-mage`) or remote URLs, which need no backup.
+function isLocalAvatarFile(value: string | null): value is string {
+  return isAvatarPhotoUri(value) && value.startsWith("file:");
 }
 
 function journalMediaKey(entryId: number, attachmentId: string) {
@@ -219,6 +231,17 @@ export function deleteBackedUpJournalMedia(entryId: number, attachmentIds: strin
 export async function restoreMediaFiles() {
   const token = getSessionToken();
   if (!token) return;
+
+  // The avatar lives in the app's document directory, which iOS deletes with
+  // the app - re-download it like any other backed-up photo.
+  const profileRows = await db.select().from(profiles);
+  for (const row of profileRows) {
+    if (!isLocalAvatarFile(row.avatar)) continue;
+    const ext = row.avatar.split("?")[0].split(".").pop() || "jpg";
+    await restoreOne("avatar", String(row.id), row.avatar, AVATAR_DIR_NAME, `avatar-restored-${Date.now()}.${ext}`, async (uri) => {
+      await db.update(profiles).set({ avatar: uri ?? null }).where(eq(profiles.id, row.id));
+    });
+  }
 
   const focusRows = await db.select().from(dailyFocus);
   for (const row of focusRows) {

@@ -102,12 +102,13 @@ export function uploadCloudSnapshot(identityToken: string, snapshot: CloudSnapsh
 
 const MEDIA_TIMEOUT_MS = 60_000;
 
-export type MediaKind = "focus" | "habit-photo" | "journal-photo" | "journal-media";
+export type MediaKind = "focus" | "habit-photo" | "journal-photo" | "journal-media" | "avatar";
 
 const MEDIA_CONTENT_TYPE: Record<MediaKind, string> = {
   focus: "video/mp4",
   "habit-photo": "image/jpeg",
   "journal-photo": "image/jpeg",
+  avatar: "image/jpeg",
   // Journal attachments are any photo/video/file; uploads pass their own type.
   "journal-media": "application/octet-stream",
 };
